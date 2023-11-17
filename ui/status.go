@@ -1,19 +1,31 @@
 package ui
 
 import (
+	"fmt"
 	"github.com/rivo/tview"
 	"os/exec"
+	"strconv"
+	"strings"
+	"weterm/utils"
 )
 
 func SetUpStatusPage(receiver *BootStrap) {
-	cmd := exec.Command("ps", "-ef")
+	cmd := exec.Command("bash", "-c", "ulimit -n")
 	output, err := cmd.Output()
 	if err != nil {
 		panic(err)
 	}
 
-	// 创建一个文本框用于显示命令执行结果
-	outputTextView := tview.NewTextView().SetText(string(output)).SetTextAlign(tview.AlignLeft).SetDynamicColors(true)
+	ulimit, _ := strconv.Atoi(strings.TrimSpace(string(output)))
+
+	// 创建一个文本框用于显示ulimit数量和emoji表示
+	outputTextView := tview.NewTextView().SetTextAlign(tview.AlignLeft).SetDynamicColors(true)
+
+	if ulimit > 1000 {
+		outputTextView.SetText(utils.MakeHealthText(fmt.Sprintf("ulimit: %d", ulimit)))
+	} else {
+		outputTextView.SetText(utils.MakeWarnText(fmt.Sprintf("ulimit: %d", ulimit)))
+	}
 
 	// 创建一个布局，并将文本框添加到其中
 	layout := tview.NewFlex().SetDirection(tview.FlexRow).
