@@ -5,7 +5,7 @@ import (
 	"os/exec"
 )
 
-func SetUpStatusPage(receiver BootStrap) {
+func SetUpStatusPage(receiver *BootStrap) {
 	cmd := exec.Command("ps", "-ef")
 	output, err := cmd.Output()
 	if err != nil {
