@@ -1,13 +1,14 @@
-package ui
+package example
 
 import (
 	"fmt"
 	"github.com/rivo/tview"
 	"os/exec"
 	"strings"
+	"weterm/model"
 )
 
-func SetUpShellCommandPage(receiver *BootStrap) {
+func SetUpShellCommandPage(receiver *model.AppModel) {
 	// 创建一个表单页面
 	formPage := tview.NewForm()
 	formPage.SetBorder(true).SetTitle("Shell Command Executor").SetTitleAlign(tview.AlignCenter)

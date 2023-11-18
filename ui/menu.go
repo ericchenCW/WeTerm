@@ -3,28 +3,31 @@ package ui
 import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"weterm/model"
+	"weterm/pages"
+	"weterm/pages/example"
 )
 
 type MenuItem struct {
 	Name   string
-	Action func(*BootStrap)
+	Action func(*model.AppModel)
 }
 
 // Main menu items
 var (
 	mainMenuItems = []MenuItem{
-		{"示例", func(bs *BootStrap) {
+		{"示例", func(bs *model.AppModel) {
 			bs.CorePages.SwitchToPage("form_sample")
 		}},
-		{"WeOps安装", func(bs *BootStrap) {
+		{"WeOps安装", func(bs *model.AppModel) {
 		}},
-		{"运维工具", func(bs *BootStrap) {
+		{"运维工具", func(bs *model.AppModel) {
 		}},
-		{"健康检查", func(bs *BootStrap) {
+		{"健康检查", func(bs *model.AppModel) {
 			bs.CorePages.SwitchToPage("status_check")
 		}},
 
-		{"退出", func(bs *BootStrap) {
+		{"退出", func(bs *model.AppModel) {
 			bs.CoreApp.Stop()
 		}},
 	}
@@ -32,16 +35,16 @@ var (
 
 // Sub menu items
 var (
-	subMenuItems = map[string]func(*BootStrap){
-		"基础表单":    SetUpFormSamplePage,
-		"组件检查":    SetUpStatusPage,
-		"Shell示例": SetUpShellCommandPage,
-		"查看日志":    SetUpLogViewerPage,
-		"文本编辑":    SetupEditFilePage,
+	subMenuItems = map[string]func(*model.AppModel){
+		"基础表单":    example.SetUpFormSamplePage,
+		"组件检查":    pages.SetUpStatusPage,
+		"Shell示例": example.SetUpShellCommandPage,
+		"查看日志":    example.SetUpLogViewerPage,
+		"文本编辑":    example.SetupEditFilePage,
 	}
 )
 
-func SetUpMenuPage(receiver *BootStrap) {
+func SetUpMenuPage(receiver *model.AppModel) {
 	// Main Menu
 	mainMenu := createMainMenu(receiver)
 
@@ -97,7 +100,7 @@ func SetUpMenuPage(receiver *BootStrap) {
 	receiver.CoreApp.SetRoot(receiver.CorePages, true)
 }
 
-func createMainMenu(receiver *BootStrap) *tview.List {
+func createMainMenu(receiver *model.AppModel) *tview.List {
 	mainMenu := tview.NewList()
 	for _, item := range mainMenuItems {
 		action := item.Action // Create a new variable to store the action
@@ -110,14 +113,14 @@ func createMainMenu(receiver *BootStrap) *tview.List {
 	return mainMenu
 }
 
-func createSubMenu(receiver *BootStrap) *tview.List {
+func createSubMenu(receiver *model.AppModel) *tview.List {
 	subMenu := tview.NewList()
 	subMenu.SetBorder(true).SetTitle("子菜单")
 	receiver.CorePages.AddPage("sub_menu", subMenu, false, false)
 	return subMenu
 }
 
-func setMenuInputCapture(receiver *BootStrap, mainMenu *tview.List, subMenu *tview.List) {
+func setMenuInputCapture(receiver *model.AppModel, mainMenu *tview.List, subMenu *tview.List) {
 	mainMenu.SetInputCapture(switchFocusFunc(receiver.CoreApp, subMenu, tcell.KeyRight))
 	subMenu.SetInputCapture(switchFocusFunc(receiver.CoreApp, mainMenu, tcell.KeyLeft))
 }

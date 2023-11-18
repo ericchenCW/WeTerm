@@ -1,4 +1,4 @@
-package ui
+package pages
 
 import (
 	"fmt"
@@ -6,10 +6,11 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"weterm/model"
 	"weterm/utils"
 )
 
-func SetUpStatusPage(receiver *BootStrap) {
+func SetUpStatusPage(receiver *model.AppModel) {
 	cmd := exec.Command("bash", "-c", "ulimit -n")
 	output, err := cmd.Output()
 	if err != nil {

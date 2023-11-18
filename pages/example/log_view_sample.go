@@ -1,4 +1,4 @@
-package ui
+package example
 
 import (
 	"bufio"
@@ -7,9 +7,10 @@ import (
 	"github.com/rivo/tview"
 	"os"
 	"time"
+	"weterm/model"
 )
 
-func SetUpLogViewerPage(receiver *BootStrap) {
+func SetUpLogViewerPage(receiver *model.AppModel) {
 	// 创建一个表单页面
 	formPage := tview.NewForm()
 	formPage.SetBorder(true).SetTitle("Log Viewer").SetTitleAlign(tview.AlignCenter)

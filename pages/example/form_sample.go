@@ -1,4 +1,4 @@
-package ui
+package example
 
 import (
 	"context"
@@ -8,9 +8,10 @@ import (
 	"strings"
 	"time"
 	"weterm/component"
+	"weterm/model"
 )
 
-func SetUpFormSamplePage(receiver *BootStrap) {
+func SetUpFormSamplePage(receiver *model.AppModel) {
 	alert := component.NewAlert()
 	progressBar := component.NewProgressBar(100)
 	formPage := tview.NewForm()

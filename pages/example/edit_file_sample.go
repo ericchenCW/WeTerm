@@ -1,9 +1,10 @@
-package ui
+package example
 
 import (
 	"github.com/rivo/tview"
 	"io/ioutil"
 	"path/filepath"
+	"weterm/model"
 )
 
 func add(target *tview.TreeNode, path string) {
@@ -27,7 +28,7 @@ func add(target *tview.TreeNode, path string) {
 	}
 }
 
-func SetupEditFilePage(receiver *BootStrap) {
+func SetupEditFilePage(receiver *model.AppModel) {
 	rootDir := "/var/log/" // 设置你想要显示的文件系统的根目录
 
 	// 创建一个文本框用于显示和编辑文件内容
