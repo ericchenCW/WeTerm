@@ -3,7 +3,6 @@ module weterm
 go 1.20
 
 require (
-	github.com/gdamore/tcell v1.4.0
 	github.com/gdamore/tcell/v2 v2.6.0
 	github.com/navidys/tvxwidgets v0.4.0
 	github.com/rivo/tview v0.0.0-20231115183240-7c9e464bac02
