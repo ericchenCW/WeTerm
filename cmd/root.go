@@ -19,7 +19,7 @@ var (
 
 func run(cmd *cobra.Command, args []string) error {
 	mod := os.O_CREATE | os.O_APPEND | os.O_WRONLY
-	file, err := os.OpenFile("./weterm.log", mod, 777)
+	file, err := os.OpenFile("./weterm.log", mod, 0777)
 	if err != nil {
 		return err
 	}

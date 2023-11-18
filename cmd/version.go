@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/spf13/cobra"
+	"weterm/color"
 )
 
 func versionCmd() *cobra.Command {
@@ -24,12 +25,12 @@ func versionCmd() *cobra.Command {
 
 func printVersion(short bool) {
 	const fmat = "%-20s %s\n"
-	var outputColor Paint
+	var outputColor color.Paint
 
 	if short {
 		outputColor = -1
 	} else {
-		outputColor = Cyan
+		outputColor = color.Cyan
 		printLogo(outputColor)
 	}
 	printTuple(fmat, "Version", "1.0.0", outputColor)
@@ -43,16 +44,16 @@ var LogoSmall = []string{
 	`   \_/\_/  \___||_| \___||_|   |_| |_|\___|`,
 }
 
-func printLogo(c Paint) {
+func printLogo(c color.Paint) {
 	for _, l := range LogoSmall {
-		fmt.Fprintln(out, Colorize(l, c))
+		fmt.Fprintln(out, color.Colorize(l, c))
 	}
 	fmt.Fprintln(out)
 }
 
-func printTuple(fmat, section, value string, outputColor Paint) {
+func printTuple(fmat, section, value string, outputColor color.Paint) {
 	if outputColor != -1 {
-		fmt.Fprintf(out, fmat, Colorize(section+":", outputColor), value)
+		fmt.Fprintf(out, fmat, color.Colorize(section+":", outputColor), value)
 		return
 	}
 	fmt.Fprintf(out, fmat, section, value)
