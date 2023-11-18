@@ -45,12 +45,12 @@ func SetUpMenuPage(receiver *BootStrap) {
 		subMenu.Clear()
 		switch mainText {
 		case "示例":
-			subMenu.AddItem("基础表单", "", 'm', func() {
+			subMenu.AddItem("基础表单", "", 0, func() {
 				subMenuItems["基础表单"](receiver)
 				receiver.CorePages.SwitchToPage("form_sample")
 			})
 		case "健康检查":
-			subMenu.AddItem("组件检查", "", 'm', func() {
+			subMenu.AddItem("组件检查", "", 0, func() {
 				subMenuItems["组件检查"](receiver)
 				receiver.CorePages.SwitchToPage("status_check")
 			})
