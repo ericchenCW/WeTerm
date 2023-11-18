@@ -36,6 +36,8 @@ var (
 		"基础表单":    SetUpFormSamplePage,
 		"组件检查":    SetUpStatusPage,
 		"Shell示例": SetUpShellCommandPage,
+		"查看日志":    SetUpLogViewerPage,
+		"文本编辑":    SetupEditFilePage,
 	}
 )
 
@@ -58,6 +60,14 @@ func SetUpMenuPage(receiver *BootStrap) {
 			subMenu.AddItem("Shell示例", "", 0, func() { // 添加这段代码
 				subMenuItems["Shell示例"](receiver)
 				receiver.CorePages.SwitchToPage("shell_command_page")
+			})
+			subMenu.AddItem("查看日志", "", 0, func() { // 添加这段代码
+				subMenuItems["查看日志"](receiver)
+				receiver.CorePages.SwitchToPage("log_viewer_page")
+			})
+			subMenu.AddItem("文本编辑", "", 0, func() { // 添加这段代码
+				subMenuItems["文本编辑"](receiver)
+				receiver.CorePages.SwitchToPage("edit_file_page")
 			})
 		case "WeOps安装":
 			subMenu.AddItem("单机版", "", 0, nil)

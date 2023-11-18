@@ -4,11 +4,13 @@ go 1.20
 
 require (
 	github.com/gdamore/tcell/v2 v2.6.0
+	github.com/hpcloud/tail v1.0.0
 	github.com/navidys/tvxwidgets v0.4.0
 	github.com/rivo/tview v0.0.0-20231115183240-7c9e464bac02
 )
 
 require (
+	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
@@ -16,4 +18,6 @@ require (
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/term v0.6.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
+	gopkg.in/fsnotify.v1 v1.4.7 // indirect
+	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )
