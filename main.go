@@ -1,8 +1,9 @@
 package main
 
-import "weterm/ui"
+import (
+	"weterm/cmd"
+)
 
 func main() {
-	bootstrap := ui.NewBootStrap()
-	bootstrap.Start()
+	cmd.Execute()
 }
