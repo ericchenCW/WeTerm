@@ -3,10 +3,10 @@ package cmd
 import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"weterm/index"
 	"weterm/model"
 	"weterm/pages"
 	"weterm/pages/example"
-	"weterm/ui"
 )
 
 type App struct {
@@ -27,7 +27,7 @@ func NewApp() *App {
 }
 
 func (receiver *App) setupPages() {
-	ui.SetUpMenuPage(receiver.model)
+	index.SetUpMenuPage(receiver.model)
 	pages.SetUpStatusPage(receiver.model)
 	example.SetUpFormSamplePage(receiver.model)
 }
