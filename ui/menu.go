@@ -16,9 +16,14 @@ var (
 		{"示例", func(bs *BootStrap) {
 			bs.CorePages.SwitchToPage("form_sample")
 		}},
+		{"WeOps安装", func(bs *BootStrap) {
+		}},
+		{"运维工具", func(bs *BootStrap) {
+		}},
 		{"健康检查", func(bs *BootStrap) {
 			bs.CorePages.SwitchToPage("status_check")
 		}},
+
 		{"退出", func(bs *BootStrap) {
 			bs.CoreApp.Stop()
 		}},
@@ -28,8 +33,9 @@ var (
 // Sub menu items
 var (
 	subMenuItems = map[string]func(*BootStrap){
-		"基础表单": SetUpFormSamplePage,
-		"组件检查": SetUpStatusPage,
+		"基础表单":    SetUpFormSamplePage,
+		"组件检查":    SetUpStatusPage,
+		"Shell示例": SetUpShellCommandPage,
 	}
 )
 
@@ -49,6 +55,14 @@ func SetUpMenuPage(receiver *BootStrap) {
 				subMenuItems["基础表单"](receiver)
 				receiver.CorePages.SwitchToPage("form_sample")
 			})
+			subMenu.AddItem("Shell示例", "", 0, func() { // 添加这段代码
+				subMenuItems["Shell示例"](receiver)
+				receiver.CorePages.SwitchToPage("shell_command_page")
+			})
+		case "WeOps安装":
+			subMenu.AddItem("单机版", "", 0, nil)
+			subMenu.AddItem("标准版(3节点)", "", 0, nil)
+			subMenu.AddItem("高可用版(7节点)", "", 0, nil)
 		case "健康检查":
 			subMenu.AddItem("组件检查", "", 0, func() {
 				subMenuItems["组件检查"](receiver)
