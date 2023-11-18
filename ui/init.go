@@ -29,6 +29,7 @@ func (receiver *BootStrap) setupPages() {
 
 func (receiver *BootStrap) SetupInputCapture() {
 	receiver.CoreApp.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+
 		if event.Key() == tcell.KeyEscape {
 			if receiver.CancelFunc != nil {
 				receiver.CancelFunc()

@@ -12,7 +12,13 @@ func SetUpMenuPage(receiver *BootStrap) {
 		receiver.CorePages.SwitchToPage("form_sample")
 	})
 
-	listMenu.AddItem("检查WeOps组件状态", "", 'a', func() {
+	listMenu.AddItem("安装", "", 'a', func() {
+	})
+
+	listMenu.AddItem("部署", "", 'b', func() {
+	})
+
+	listMenu.AddItem("组件健康检查", "", 'c', func() {
 		SetUpStatusPage(receiver) // 创建新的状态检查页面
 		receiver.CorePages.SwitchToPage("status_check")
 	})
