@@ -9,40 +9,89 @@ import (
 )
 
 type MenuItem struct {
-	Name   string
-	Action func(*model.AppModel)
+	Name     string
+	Action   func(*model.AppModel)
+	SubItems []MenuItem
 }
 
 // Main menu items
-var (
-	mainMenuItems = []MenuItem{
-		{"示例", func(bs *model.AppModel) {
+var mainMenuItems = []MenuItem{
+	{
+		Name: "示例",
+		Action: func(bs *model.AppModel) {
 			bs.CorePages.SwitchToPage("form_sample")
-		}},
-		{"WeOps安装", func(bs *model.AppModel) {
-		}},
-		{"运维工具", func(bs *model.AppModel) {
-		}},
-		{"健康检查", func(bs *model.AppModel) {
+		},
+		SubItems: []MenuItem{
+			{
+				Name: "基础表单",
+				Action: func(bs *model.AppModel) {
+					example.SetUpFormSamplePage(bs)
+					bs.CorePages.SwitchToPage("form_sample")
+				},
+			},
+			{
+				Name: "Shell示例",
+				Action: func(bs *model.AppModel) {
+					example.SetUpShellCommandPage(bs)
+					bs.CorePages.SwitchToPage("shell_command_page")
+				},
+			},
+			{
+				Name: "查看日志",
+				Action: func(bs *model.AppModel) {
+					example.SetUpLogViewerPage(bs)
+					bs.CorePages.SwitchToPage("log_viewer_page")
+				},
+			},
+			{
+				Name: "文本编辑",
+				Action: func(bs *model.AppModel) {
+					example.SetupEditFilePage(bs)
+					bs.CorePages.SwitchToPage("edit_file_page")
+				},
+			},
+		},
+	},
+	{
+		Name: "WeOps安装",
+		Action: func(bs *model.AppModel) {
+			// TODO: Add implementation
+		},
+		SubItems: []MenuItem{
+			// TODO: Add sub-menu items for WeOps安装
+		},
+	},
+	{
+		Name: "运维工具",
+		Action: func(bs *model.AppModel) {
+			// TODO: Add implementation
+		},
+		SubItems: []MenuItem{
+			// TODO: Add sub-menu items for 运维工具
+		},
+	},
+	{
+		Name: "健康检查",
+		Action: func(bs *model.AppModel) {
 			bs.CorePages.SwitchToPage("status_check")
-		}},
-
-		{"退出", func(bs *model.AppModel) {
+		},
+		SubItems: []MenuItem{
+			{
+				Name: "组件检查",
+				Action: func(bs *model.AppModel) {
+					pages.SetUpStatusPage(bs)
+					bs.CorePages.SwitchToPage("status_check")
+				},
+			},
+		},
+	},
+	{
+		Name: "退出",
+		Action: func(bs *model.AppModel) {
 			bs.CoreApp.Stop()
-		}},
-	}
-)
-
-// Sub menu items
-var (
-	subMenuItems = map[string]func(*model.AppModel){
-		"基础表单":    example.SetUpFormSamplePage,
-		"组件检查":    pages.SetUpStatusPage,
-		"Shell示例": example.SetUpShellCommandPage,
-		"查看日志":    example.SetUpLogViewerPage,
-		"文本编辑":    example.SetupEditFilePage,
-	}
-)
+		},
+	},
+}
 
 func SetUpMenuPage(receiver *model.AppModel) {
 	// Main Menu
@@ -54,33 +103,14 @@ func SetUpMenuPage(receiver *model.AppModel) {
 	updateSubMenu := func(index int, mainText string, secondaryText string, shortcut rune) {
 		// Update submenu based on main menu selection
 		subMenu.Clear()
-		switch mainText {
-		case "示例":
-			subMenu.AddItem("基础表单", "", 0, func() {
-				subMenuItems["基础表单"](receiver)
-				receiver.CorePages.SwitchToPage("form_sample")
-			})
-			subMenu.AddItem("Shell示例", "", 0, func() { // 添加这段代码
-				subMenuItems["Shell示例"](receiver)
-				receiver.CorePages.SwitchToPage("shell_command_page")
-			})
-			subMenu.AddItem("查看日志", "", 0, func() { // 添加这段代码
-				subMenuItems["查看日志"](receiver)
-				receiver.CorePages.SwitchToPage("log_viewer_page")
-			})
-			subMenu.AddItem("文本编辑", "", 0, func() { // 添加这段代码
-				subMenuItems["文本编辑"](receiver)
-				receiver.CorePages.SwitchToPage("edit_file_page")
-			})
-		case "WeOps安装":
-			subMenu.AddItem("单机版", "", 0, nil)
-			subMenu.AddItem("标准版(3节点)", "", 0, nil)
-			subMenu.AddItem("高可用版(7节点)", "", 0, nil)
-		case "健康检查":
-			subMenu.AddItem("组件检查", "", 0, func() {
-				subMenuItems["组件检查"](receiver)
-				receiver.CorePages.SwitchToPage("status_check")
-			})
+		if index >= 0 && index < len(mainMenuItems) {
+			subItems := mainMenuItems[index].SubItems
+			for _, item := range subItems {
+				action := item.Action // Create a new variable to store the action
+				subMenu.AddItem(item.Name, "", 0, func() {
+					action(receiver) // Use the action variable instead of item.Action
+				})
+			}
 		}
 	}
 
