@@ -34,7 +34,7 @@ func (receiver *BootStrap) SetupInputCapture() {
 			if receiver.CancelFunc != nil {
 				receiver.CancelFunc()
 			}
-			receiver.CorePages.SwitchToPage("main_menu")
+			receiver.CorePages.SwitchToPage("menu")
 			return nil
 		}
 		return event
