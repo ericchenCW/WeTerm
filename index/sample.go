@@ -37,7 +37,7 @@ var sampleMenu = []MenuItem{
 					},
 				},
 			}
-			shellCommand := "/Users/kira/Documents/workspaces/products/neverland/weterm/demo.sh {名称:} {数值:}"
+			shellCommand := "./demo.sh {名称:}"
 			template.ShowShellFormExecutePage(bs, "表单Shell示例", shellCommand, formItems)
 			bs.CorePages.SwitchToPage("shell_form_execute")
 		},

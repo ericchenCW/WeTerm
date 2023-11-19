@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/rivo/tview"
+	"github.com/rs/zerolog/log"
 	"net"
 	"os/exec"
 	"strconv"
@@ -130,7 +131,9 @@ func ShowShellFormExecutePage(receiver *model.AppModel, title string, shellComma
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
 				receiver.CoreApp.QueueUpdateDraw(func() {
+					log.Info().Msg(scanner.Text())
 					fmt.Fprintf(outputTextView, "%s\n", scanner.Text())
+
 					outputTextView.ScrollToEnd()
 				})
 			}
