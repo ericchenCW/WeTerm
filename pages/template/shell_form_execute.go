@@ -139,6 +139,8 @@ func ShowShellFormExecutePage(receiver *model.AppModel, title string, shellComma
 					fmt.Fprintf(outputTextView, "Error: %v\n", err)
 				})
 			}
+
+			// Wait for the command to finish
 			if err := cmd.Wait(); err != nil {
 				receiver.CoreApp.QueueUpdateDraw(func() {
 					fmt.Fprintf(outputTextView, "Error: %v\n", err)

@@ -2,3 +2,4 @@ vendor/
 .idea/
 weterm
 weterm.log
+demo.sh
