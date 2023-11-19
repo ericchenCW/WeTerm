@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"weterm/model"
+	"weterm/utils"
 )
 
 func add(target *tview.TreeNode, path string) {
@@ -28,7 +29,7 @@ func add(target *tview.TreeNode, path string) {
 	}
 }
 
-func SetupEditFilePage(receiver *model.AppModel) {
+func ShowEditFilePage(receiver *model.AppModel) {
 	rootDir := "/var/log/" // 设置你想要显示的文件系统的根目录
 
 	// 创建一个文本框用于显示和编辑文件内容
@@ -72,5 +73,5 @@ func SetupEditFilePage(receiver *model.AppModel) {
 		AddItem(editorTextView, 0, 3, false)
 
 	// 创建一个页面
-	receiver.CorePages.AddPage("edit_file_page", flex, true, false)
+	utils.ShowPage(receiver, "edit_file_page", flex)
 }

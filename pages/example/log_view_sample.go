@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 	"weterm/model"
+	"weterm/utils"
 )
 
 func SetUpLogViewerPage(receiver *model.AppModel) {
@@ -72,5 +73,5 @@ func SetUpLogViewerPage(receiver *model.AppModel) {
 		AddItem(outputTextView, 0, 3, false)
 
 	// 创建一个页面
-	receiver.CorePages.AddPage("log_viewer_page", flex, true, false)
+	utils.ShowPage(receiver, "log_viewer_page", flex)
 }

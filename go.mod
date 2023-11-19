@@ -9,6 +9,7 @@ require (
 	github.com/rivo/tview v0.0.0-20231115183240-7c9e464bac02
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/cobra v1.8.0
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 )
 
 require (

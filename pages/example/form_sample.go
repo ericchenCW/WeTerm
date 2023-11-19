@@ -21,6 +21,9 @@ func SetUpFormSamplePage(receiver *model.AppModel) {
 
 	formPage.AddDropDown("操作系统", []string{"Linux", "Windows", "MacOS"}, 0, nil)
 	formPage.AddCheckbox("单机部署", false, nil)
+	formPage.AddCheckbox("监控中心", false, nil)
+	formPage.AddCheckbox("告警中心", false, nil)
+	formPage.AddCheckbox("APM", false, nil)
 	formPage.AddTextArea(appoLabel, "", 20, 0, 0, nil)
 	outputTextView := tview.NewTextView().SetDynamicColors(true)
 	outputTextView.SetBorder(true).SetTitle("输出").SetTitleAlign(tview.AlignCenter)
