@@ -3,6 +3,7 @@ package template
 import (
 	"bufio"
 	"fmt"
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
 	"net"
@@ -52,7 +53,8 @@ func ShowShellFormExecutePage(receiver *model.AppModel, title string, shellComma
 	formPage.SetBorder(true).SetTitle(title).SetTitleAlign(tview.AlignCenter)
 
 	// Create a TextView for output
-	outputTextView := tview.NewTextView().SetDynamicColors(true)
+	outputTextView := tview.NewTextView().SetScrollable(true)
+
 	outputTextView.SetBorder(true).SetTitle("输出").SetTitleAlign(tview.AlignCenter)
 	outputTextView.SetText("")
 
@@ -133,7 +135,6 @@ func ShowShellFormExecutePage(receiver *model.AppModel, title string, shellComma
 				receiver.CoreApp.QueueUpdateDraw(func() {
 					log.Info().Msg(scanner.Text())
 					fmt.Fprintf(outputTextView, "%s\n", scanner.Text())
-
 					outputTextView.ScrollToEnd()
 				})
 			}
@@ -156,5 +157,16 @@ func ShowShellFormExecutePage(receiver *model.AppModel, title string, shellComma
 	flex := tview.NewFlex().SetDirection(tview.FlexColumn).
 		AddItem(formPage, 0, 1, true).
 		AddItem(outputTextView, 0, 3, false)
+
+	flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyLeft: // On left arrow key, set focus to formPage
+			receiver.CoreApp.SetFocus(formPage)
+		case tcell.KeyRight: // On right arrow key, set focus to outputTextView
+			receiver.CoreApp.SetFocus(outputTextView)
+		}
+		return event
+	})
+
 	receiver.CorePages.AddPage("shell_form_execute", flex, true, false)
 }
