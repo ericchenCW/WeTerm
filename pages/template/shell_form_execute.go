@@ -55,7 +55,7 @@ func ShowShellFormExecutePage(receiver *model.AppModel, title string, shellComma
 	outputTextView.SetBorder(true).SetTitle("输出").SetTitleAlign(tview.AlignCenter)
 	outputTextView.SetText("")
 
-	formPage.AddButton("开始部署", func() {
+	formPage.AddButton("执行", func() {
 		outputTextView.SetText("")
 		// Read values from the form and pass them to the shell command
 		shellCommand := shellCommandTemplate

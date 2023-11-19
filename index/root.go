@@ -4,9 +4,6 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"weterm/model"
-	"weterm/pages"
-	"weterm/pages/example"
-	"weterm/pages/template"
 )
 
 type MenuItem struct {
@@ -20,117 +17,27 @@ var mainMenuItems = []MenuItem{
 	{
 		Name: "示例",
 		Action: func(bs *model.AppModel) {
-			bs.CorePages.SwitchToPage("form_sample")
 		},
-		SubItems: []MenuItem{
-			{
-				Name: "基础表单",
-				Action: func(bs *model.AppModel) {
-					example.SetUpFormSamplePage(bs)
-					bs.CorePages.SwitchToPage("form_sample")
-				},
-			},
-			{
-				Name: "表单Shell示例",
-				Action: func(bs *model.AppModel) {
-					formItems := []template.FormItem{
-						{
-							Type:        "input_field",
-							Label:       "名称:",
-							DefaultText: "Hello, world!",
-							Validation: &template.Validation{
-								Required: false,
-								Type:     "none",
-							},
-						},
-						{
-							Type:        "input_field",
-							Label:       "数值:",
-							DefaultText: "",
-							Validation: &template.Validation{
-								Required: true,
-								Type:     "numeric",
-							},
-						},
-					}
-					shellCommand := "echo {名称:} && echo {数值:}"
-					template.ShowShellFormExecutePage(bs, "表单Shell示例", shellCommand, formItems)
-					bs.CorePages.SwitchToPage("shell_form_execute")
-				},
-			},
-			{
-				Name: "Shell示例",
-				Action: func(bs *model.AppModel) {
-					example.SetUpShellCommandPage(bs)
-					bs.CorePages.SwitchToPage("shell_command_page")
-				},
-			},
-			{
-				Name: "查看主机进程",
-				Action: func(bs *model.AppModel) {
-					template.ShowShellExecutePage(bs, "进程查询", "ps -ef")
-				},
-			},
-			{
-				Name: "查看日志",
-				Action: func(bs *model.AppModel) {
-					example.SetUpLogViewerPage(bs)
-				},
-			},
-			{
-				Name: "文本编辑",
-				Action: func(bs *model.AppModel) {
-					example.ShowEditFilePage(bs)
-				},
-			},
-		},
+		SubItems: sampleMenu,
 	},
 	{
 		Name: "WeOps安装",
 		Action: func(bs *model.AppModel) {
-			// TODO: Add implementation
 		},
-		SubItems: []MenuItem{
-			{
-				Name: "单机版",
-				Action: func(bs *model.AppModel) {
-				},
-			},
-			{
-				Name: "标准版(3节点)",
-				Action: func(bs *model.AppModel) {
-				},
-			},
-			{
-				Name: "高可用版(7节点)",
-				Action: func(bs *model.AppModel) {
-				},
-			},
-		},
+		SubItems: installMenu,
 	},
 	{
 		Name: "运维工具",
 		Action: func(bs *model.AppModel) {
-			// TODO: Add implementation
 		},
-		SubItems: []MenuItem{
-			// TODO: Add sub-menu items for 运维工具
-		},
+		SubItems: []MenuItem{},
 	},
 	{
 		Name: "健康检查",
 		Action: func(bs *model.AppModel) {
 			bs.CorePages.SwitchToPage("status_check")
 		},
-		SubItems: []MenuItem{
-			{
-				Name: "组件检查",
-				Action: func(bs *model.AppModel) {
-					pages.SetUpStatusPage(bs)
-					bs.CorePages.SwitchToPage("status_check")
-				},
-			},
-		},
+		SubItems: healthMenu,
 	},
 	{
 		Name: "退出",
