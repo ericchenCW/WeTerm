@@ -22,8 +22,9 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	bootstrap := NewApp()
-	bootstrap.Start()
+	app := NewApp()
+	app.Start()
+
 	return nil
 }
 
@@ -34,7 +35,7 @@ func setupLogInstance() error {
 		return err
 	}
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: file})
-	log.Info().Msg("🐶 WeTerm starting up...")
+	log.Info().Msg("WeTerm starting up...")
 	return nil
 }
 

@@ -18,13 +18,13 @@ func versionCmd() *cobra.Command {
 		},
 	}
 
-	command.PersistentFlags().BoolVarP(&short, "short", "s", false, "Prints K9s version info in short format")
+	command.PersistentFlags().BoolVarP(&short, "short", "s", false, "Prints WeTerm version info in short format")
 
 	return &command
 }
 
 func printVersion(short bool) {
-	const fmat = "%-20s %s\n"
+	const format = "%-20s %s\n"
 	var outputColor utils.Paint
 
 	if short {
@@ -33,7 +33,7 @@ func printVersion(short bool) {
 		outputColor = utils.Cyan
 		printLogo(outputColor)
 	}
-	printTuple(fmat, "Version", "1.0.0", outputColor)
+	printTuple(format, "Version", "1.0.0", outputColor)
 }
 
 var LogoSmall = []string{
