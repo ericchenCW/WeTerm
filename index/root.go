@@ -1,9 +1,10 @@
 package index
 
 import (
+	"weterm/model"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"weterm/model"
 )
 
 type MenuItem struct {
@@ -30,7 +31,7 @@ var mainMenuItems = []MenuItem{
 		Name: "运维工具",
 		Action: func(bs *model.AppModel) {
 		},
-		SubItems: []MenuItem{},
+		SubItems: opsMenu,
 	},
 	{
 		Name: "健康检查",
