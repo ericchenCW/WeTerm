@@ -40,9 +40,9 @@ func printVersion(short bool) {
 		printLogo(outputColor)
 	}
 	printTuple(format, "Version", Version, outputColor)
-	printTuple(format, "Git Hash", Hash, outputColor)
-	printTuple(format, "Build At", BuildTime, outputColor)
-	printTuple(format, "Auther", GitUser, outputColor)
+	printTuple(format, "GitHash", Hash, outputColor)
+	printTuple(format, "BuildAt", BuildTime, outputColor)
+	printTuple(format, "Builder", GitUser, outputColor)
 }
 
 var LogoSmall = []string{
