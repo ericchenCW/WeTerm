@@ -2,9 +2,15 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"weterm/utils"
+
+	"github.com/spf13/cobra"
 )
+
+var Version = "unset"
+var Hash = "unset"
+var BuildTime = "unset"
+var GitUser = "unset"
 
 func versionCmd() *cobra.Command {
 	var short bool
@@ -33,7 +39,10 @@ func printVersion(short bool) {
 		outputColor = utils.Cyan
 		printLogo(outputColor)
 	}
-	printTuple(format, "Version", "1.0.0", outputColor)
+	printTuple(format, "Version", Version, outputColor)
+	printTuple(format, "Git Hash", Hash, outputColor)
+	printTuple(format, "Build At", BuildTime, outputColor)
+	printTuple(format, "Auther", GitUser, outputColor)
 }
 
 var LogoSmall = []string{
