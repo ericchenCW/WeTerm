@@ -15,12 +15,12 @@ type MenuItem struct {
 
 // Main menu items
 var mainMenuItems = []MenuItem{
-	{
-		Name: "示例",
-		Action: func(bs *model.AppModel) {
-		},
-		SubItems: sampleMenu,
-	},
+	//{
+	//	Name: "示例",
+	//	Action: func(bs *model.AppModel) {
+	//	},
+	//	SubItems: sampleMenu,
+	//},
 	{
 		Name: "WeOps安装",
 		Action: func(bs *model.AppModel) {
@@ -28,17 +28,76 @@ var mainMenuItems = []MenuItem{
 		SubItems: installMenu,
 	},
 	{
+		Name: "健康检查",
+		Action: func(bs *model.AppModel) {
+		},
+		//SubItems: healthMenu,
+	},
+	{
+		Name: "-- 服务状态",
+		Action: func(bs *model.AppModel) {
+		},
+		SubItems: serviceHealthMenu,
+	},
+	{
+		Name: "-- 组件状态",
+		Action: func(bs *model.AppModel) {
+		},
+		SubItems: componentHealthMenu,
+	},
+	{
+		Name: "-- 主机状态",
+		Action: func(bs *model.AppModel) {
+		},
+		//SubItems: healthMenu,
+	},
+	{
 		Name: "运维工具",
 		Action: func(bs *model.AppModel) {
 		},
-		SubItems: opsMenu,
+		//SubItems: opsMenu,
 	},
 	{
-		Name: "健康检查",
+		Name: "-- 服务启停",
 		Action: func(bs *model.AppModel) {
-			bs.CorePages.SwitchToPage("status_check")
 		},
-		SubItems: healthMenu,
+		SubItems: servicesOpsMenu,
+	},
+	{
+		Name: "-- 组件操作",
+		Action: func(bs *model.AppModel) {
+		},
+		SubItems: componentsOpsMenu,
+	},
+	{
+		Name: "-- 备份恢复",
+		Action: func(bs *model.AppModel) {
+		},
+		//SubItems: opsMenu,
+	},
+	{
+		Name: "-- 组件操作",
+		Action: func(bs *model.AppModel) {
+		},
+		//SubItems: opsMenu,
+	},
+	{
+		Name: "-- 磁盘清理",
+		Action: func(bs *model.AppModel) {
+		},
+		//SubItems: opsMenu,
+	},
+	{
+		Name: "-- 接入点操作",
+		Action: func(bs *model.AppModel) {
+		},
+		//SubItems: opsMenu,
+	},
+	{
+		Name: "-- 数据初始化",
+		Action: func(bs *model.AppModel) {
+		},
+		//SubItems: opsMenu,
 	},
 	{
 		Name: "退出",
