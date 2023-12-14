@@ -3,21 +3,21 @@ package index
 import (
 	"weterm/model"
 	"weterm/pages"
+	"weterm/pages/healthcheck"
+	"weterm/pages/template"
 )
 
 var componentHealthMenu = []MenuItem{
 	{
 		Name: "consul",
 		Action: func(bs *model.AppModel) {
-			pages.SetUpStatusPage(bs)
-			bs.CorePages.SwitchToPage("status_check")
+			template.ShowHealthView(bs, healthcheck.MysqlHealth{})
 		},
 	},
 	{
 		Name: "mysql",
 		Action: func(bs *model.AppModel) {
-			pages.SetUpStatusPage(bs)
-			bs.CorePages.SwitchToPage("status_check")
+			template.ShowHealthView(bs, healthcheck.MysqlHealth{})
 		},
 	},
 	{
