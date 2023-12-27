@@ -4,3 +4,4 @@ weterm
 weterm.log
 demo.sh
 .vscode/launch.json
+bin/
