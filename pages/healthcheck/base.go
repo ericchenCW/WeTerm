@@ -3,9 +3,9 @@ package healthcheck
 import "fmt"
 
 const (
-	Healthy = "[green] ✔ Healthy [aqua] %s"
-	Warning = "[yellow] ⚠ Warning %s"
-	Error   = "[red] ✖ Error!! [white] %s"
+	Healthy = "[green] [✔ Healthy] [aqua] %s"
+	Warning = "[yellow] [⚠ Warning]  %s"
+	Error   = "[red] [✖ Error  ] [white] %s"
 )
 
 type HealthResult struct {
