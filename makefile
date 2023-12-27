@@ -18,3 +18,6 @@ build:
 
 clean:
 	rm -vf $(BINARY_NAME)
+
+run:
+	go run main.go
