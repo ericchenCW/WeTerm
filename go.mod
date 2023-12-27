@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/gdamore/tcell/v2 v2.6.0
 	github.com/go-sql-driver/mysql v1.7.1
+	github.com/joho/godotenv v1.5.1
 	github.com/mattn/go-colorable v0.1.13
 	github.com/navidys/tvxwidgets v0.4.0
 	github.com/rivo/tview v0.0.0-20231115183240-7c9e464bac02
