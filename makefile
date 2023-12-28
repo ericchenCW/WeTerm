@@ -4,28 +4,24 @@ BINARY_NAME=bin/weterm
 # 确保命令在 $PATH 找不到是，使用绝对路径
 GOBUILD=go build
 GIT=git
+GOX=gox
 DATE=date
 GITHASH=$(shell $(GIT) rev-parse HEAD)
 BUILDTIME=$(shell $(DATE) +%FT%T%z)
 GITUSER=$(shell $(GIT) config user.name)
 VERSION?=0.0.0
-BINARY_NAME_AMD64=bin/weterm_amd64
-BINARY_NAME_ARM64=bin/weterm_arm64
+BINARY_PATH=bin/
 
 setup:
 	go mod tidy && go mod vendor
 
-build: build_amd64 build_aarch64
+build: build_gox
 
-build_aarch64:
-	GOARCH=arm64 GOOS=linux go build -ldflags="-X weterm/cmd.Hash=$(GITHASH) -X weterm/cmd.BuildTime=$(BUILDTIME) -X weterm/cmd.GitUser=$(GITUSER) -X weterm/cmd.Version=$(VERSION)" -o $(BINARY_NAME_ARM64) main.go
-
-build_amd64:
-	GOARCH=amd64 GOOS=linux go build -ldflags="-X weterm/cmd.Hash=$(GITHASH) -X weterm/cmd.BuildTime=$(BUILDTIME) -X weterm/cmd.GitUser=$(GITUSER) -X weterm/cmd.Version=$(VERSION)" -o $(BINARY_NAME_AMD64) main.go
-
+build_gox:
+	$(GOX) -os="linux darwin" -arch="amd64 arm64" -output="bin/weterm_{{.OS}}_{{.Arch}}" -ldflags="-X weterm/cmd.Hash=$(GITHASH) -X weterm/cmd.BuildTime=$(BUILDTIME) -X weterm/cmd.GitUser=$(GITUSER) -X weterm/cmd.Version=$(VERSION)"
 
 clean:
-	rm -vf $(BINARY_NAME)
+	rm -vf $(BINARY_PATH)*
 
-run:
+run: setup
 	go run main.go
