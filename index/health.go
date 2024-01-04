@@ -1,6 +1,7 @@
 package index
 
 import (
+	"os"
 	"weterm/model"
 	"weterm/pages"
 	"weterm/pages/healthcheck"
@@ -11,13 +12,15 @@ var componentHealthMenu = []MenuItem{
 	{
 		Name: "consul",
 		Action: func(bs *model.AppModel) {
-			template.ShowHealthView(bs, healthcheck.MysqlHealth{})
+			c := healthcheck.NewConsulHealth()
+			template.ShowHealthView(bs, c)
 		},
 	},
 	{
 		Name: "mysql",
 		Action: func(bs *model.AppModel) {
-			template.ShowHealthView(bs, healthcheck.MysqlHealth{})
+			m := healthcheck.NewMysqlHealth("mysql-default.service.consul", "root", os.Getenv("BK_MYSQL_ADMIN_PASSWORD"), "mysql")
+			template.ShowHealthView(bs, m)
 		},
 	},
 	{
@@ -44,6 +47,13 @@ var componentHealthMenu = []MenuItem{
 }
 
 var serviceHealthMenu = []MenuItem{
+	{
+		Name: "服务概览",
+		Action: func(bs *model.AppModel) {
+			c := healthcheck.NewConsulHealth()
+			template.ShowHealthView(bs, c)
+		},
+	},
 	{
 		Name: "Paas",
 		Action: func(bs *model.AppModel) {

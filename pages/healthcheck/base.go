@@ -6,6 +6,7 @@ const (
 	Healthy = "[green] [✔ Healthy] [aqua] %s"
 	Warning = "[yellow] [⚠ Warning]  %s"
 	Error   = "[red] [✖ Error  ] [white] %s"
+	Common  = "[white] %s"
 )
 
 type HealthResult struct {
