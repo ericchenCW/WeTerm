@@ -79,24 +79,19 @@ func (h ConsulHealth) Check() []HealthResult {
 			status:  Common,
 			message: "Consul 服务状态:",
 		})
-	services, err := h.c.Agent().Checks()
+	services, _, err := h.c.Health().State("any", nil)
 	if err != nil {
 		result = append(result, HealthResult{status: Error, message: err.Error()})
 	}
-	// 排序
-	servicesKeys := make([]string, 0, len(services))
-	for servicesKey := range services {
-		servicesKeys = append(servicesKeys, servicesKey)
-	}
-	sort.SliceStable(servicesKeys, func(i, j int) bool {
-		return services[servicesKeys[i]].ServiceName < services[servicesKeys[j]].ServiceName
+	sort.Slice(services, func(i, j int) bool {
+		return services[i].ServiceName < services[j].ServiceName
 	})
-	for _, k := range servicesKeys {
-		s := services[k]
-		if s.Status == "passing" {
-			result = append(result, HealthResult{status: Healthy, message: h.buildServiceMessage(s)})
+
+	for _, k := range services {
+		if k.Status == "passing" {
+			result = append(result, HealthResult{status: Healthy, message: h.buildServiceMessage(k)})
 		} else {
-			result = append(result, HealthResult{status: Error, message: h.buildServiceMessage(s)})
+			result = append(result, HealthResult{status: Error, message: h.buildServiceMessage(k)})
 		}
 	}
 	return result
@@ -106,6 +101,6 @@ func (h ConsulHealth) buildMemberMessage(member *capi.AgentMember) string {
 	return fmt.Sprintf("[aqua]ID: [white]%s [aqua]Name: [white]%s [aqua]Addr: [white]%s, [aqua]Build: [white]%s, [aqua]Role: [white]%s", member.Tags["id"], member.Name, member.Addr, member.Tags["build"], member.Tags["role"])
 }
 
-func (h ConsulHealth) buildServiceMessage(service *capi.AgentCheck) string {
-	return fmt.Sprintf("Service: [yellow]%s [aqua]ID: [yellow]%s \n              [aqua]Output: [white]%s", service.ServiceName, service.ServiceID, service.Output)
+func (h ConsulHealth) buildServiceMessage(service *capi.HealthCheck) string {
+	return fmt.Sprintf("Service: [yellow]%s \n              [aqua]ID: [yellow]%s \n              [aqua]Node: %s[yellow]\n              [aqua]Output: [white]%s \n", service.ServiceName, service.ServiceID, service.Node, service.Output)
 }
