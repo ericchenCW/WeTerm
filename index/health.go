@@ -17,21 +17,21 @@ var componentHealthMenu = []MenuItem{
 		},
 	},
 	{
-		Name: "mysql",
+		Name: "mysql-未实现",
 		Action: func(bs *model.AppModel) {
 			m := healthcheck.NewMysqlHealth("mysql-default.service.consul", "root", os.Getenv("BK_MYSQL_ADMIN_PASSWORD"), "mysql")
 			template.ShowHealthView(bs, m)
 		},
 	},
 	{
-		Name: "redis",
+		Name: "redis-未实现",
 		Action: func(bs *model.AppModel) {
 			pages.SetUpStatusPage(bs)
 			bs.CorePages.SwitchToPage("status_check")
 		},
 	},
 	{
-		Name: "mongodb",
+		Name: "mongodb-未实现",
 		Action: func(bs *model.AppModel) {
 			pages.SetUpStatusPage(bs)
 			bs.CorePages.SwitchToPage("status_check")
@@ -55,49 +55,49 @@ var serviceHealthMenu = []MenuItem{
 		},
 	},
 	{
-		Name: "Paas",
+		Name: "Paas-未实现",
 		Action: func(bs *model.AppModel) {
 			pages.SetUpStatusPage(bs)
 			bs.CorePages.SwitchToPage("status_check")
 		},
 	},
 	{
-		Name: "用户管理",
+		Name: "用户管理-未实现",
 		Action: func(bs *model.AppModel) {
 			pages.SetUpStatusPage(bs)
 			bs.CorePages.SwitchToPage("status_check")
 		},
 	},
 	{
-		Name: "权限中心",
+		Name: "权限中心-未实现",
 		Action: func(bs *model.AppModel) {
 			pages.SetUpStatusPage(bs)
 			bs.CorePages.SwitchToPage("status_check")
 		},
 	},
 	{
-		Name: "CMDB",
+		Name: "CMDB-未实现",
 		Action: func(bs *model.AppModel) {
 			pages.SetUpStatusPage(bs)
 			bs.CorePages.SwitchToPage("status_check")
 		},
 	},
 	{
-		Name: "作业平台",
+		Name: "作业平台-未实现",
 		Action: func(bs *model.AppModel) {
 			pages.SetUpStatusPage(bs)
 			bs.CorePages.SwitchToPage("status_check")
 		},
 	},
 	{
-		Name: "监控平台",
+		Name: "监控平台-未实现",
 		Action: func(bs *model.AppModel) {
 			pages.SetUpStatusPage(bs)
 			bs.CorePages.SwitchToPage("status_check")
 		},
 	},
 	{
-		Name: "WeOps组件",
+		Name: "WeOps组件-未实现",
 		Action: func(bs *model.AppModel) {
 			pages.SetUpStatusPage(bs)
 			bs.CorePages.SwitchToPage("status_check")

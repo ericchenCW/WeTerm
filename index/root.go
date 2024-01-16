@@ -50,61 +50,61 @@ var mainMenuItems = []MenuItem{
 		SubItems: serviceHealthMenu,
 	},
 	{
-		Name: "-- 组件状态",
+		Name: "-- 组件状态-未实现",
 		Action: func(bs *model.AppModel) {
 		},
 		SubItems: componentHealthMenu,
 	},
 	{
-		Name: "-- 主机状态",
+		Name: "-- 主机状态-未实现",
 		Action: func(bs *model.AppModel) {
 		},
 		//SubItems: healthMenu,
 	},
 	{
-		Name: "运维工具",
+		Name: "运维工具-未实现",
 		Action: func(bs *model.AppModel) {
 		},
 		//SubItems: opsMenu,
 	},
 	{
-		Name: "-- 服务启停",
+		Name: "-- 服务启停-未实现",
 		Action: func(bs *model.AppModel) {
 		},
 		SubItems: servicesOpsMenu,
 	},
 	{
-		Name: "-- 组件操作",
+		Name: "-- 组件操作-未实现",
 		Action: func(bs *model.AppModel) {
 		},
 		SubItems: componentsOpsMenu,
 	},
 	{
-		Name: "-- 备份恢复",
+		Name: "-- 备份恢复-未实现",
 		Action: func(bs *model.AppModel) {
 		},
 		//SubItems: opsMenu,
 	},
 	{
-		Name: "-- 组件操作",
+		Name: "-- 组件操作-未实现",
 		Action: func(bs *model.AppModel) {
 		},
 		//SubItems: opsMenu,
 	},
 	{
-		Name: "-- 磁盘清理",
+		Name: "-- 磁盘清理-未实现",
 		Action: func(bs *model.AppModel) {
 		},
 		//SubItems: opsMenu,
 	},
 	{
-		Name: "-- 接入点操作",
+		Name: "-- 接入点操作-未实现",
 		Action: func(bs *model.AppModel) {
 		},
 		//SubItems: opsMenu,
 	},
 	{
-		Name: "-- 数据初始化",
+		Name: "-- 数据初始化-未实现",
 		Action: func(bs *model.AppModel) {
 		},
 		//SubItems: opsMenu,
