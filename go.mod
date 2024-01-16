@@ -3,6 +3,7 @@ module weterm
 go 1.20
 
 require (
+	github.com/confluentinc/confluent-kafka-go/v2 v2.3.0
 	github.com/gdamore/tcell/v2 v2.6.0
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/hashicorp/consul/api v1.26.1

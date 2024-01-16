@@ -1,6 +1,7 @@
 package index
 
 import (
+	"os"
 	"weterm/model"
 
 	"github.com/gdamore/tcell/v2"
@@ -11,6 +12,15 @@ type MenuItem struct {
 	Name     string
 	Action   func(*model.AppModel)
 	SubItems []MenuItem
+}
+
+var aioMainMenuItems = []MenuItem{
+	{
+		Name: "WeOps一体机启动",
+		Action: func(bs *model.AppModel) {
+		},
+		SubItems: aioMenu,
+	},
 }
 
 // Main menu items
@@ -146,6 +156,9 @@ func SetUpMenuPage(receiver *model.AppModel) {
 
 func createMainMenu(receiver *model.AppModel) *tview.List {
 	mainMenu := tview.NewList()
+	if os.Getenv("AIO") == "true" {
+		mainMenuItems = append(aioMainMenuItems, mainMenuItems...)
+	}
 	for _, item := range mainMenuItems {
 		action := item.Action // Create a new variable to store the action
 		mainMenu.AddItem(item.Name, "", 0, func() {
