@@ -1,6 +1,8 @@
 package healthcheck
 
-import "fmt"
+import (
+	"fmt"
+)
 
 const (
 	Healthy = "[green] [✔ Healthy] [aqua] %s"

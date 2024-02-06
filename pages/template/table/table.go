@@ -1,0 +1,93 @@
+package table
+
+import (
+	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
+	"github.com/rs/zerolog/log"
+)
+
+type Fields []string
+
+type Header []HeaderColumn
+
+type HeaderColumn struct {
+	Name  string
+	Align int
+	Wide  bool
+}
+
+type Row struct {
+	ID     string
+	Fields Fields
+}
+
+type Rows []Row
+
+type TableData struct {
+	Header Header
+	Rows   Rows
+}
+
+func NewRow(size int) Row {
+	return Row{Fields: make([]string, size)}
+}
+
+type Table struct {
+	*tview.Table
+	Name string
+}
+
+func NewTable(name string) *Table {
+	return &Table{
+		tview.NewTable(),
+		name,
+	}
+}
+
+// Init initializes the component.
+func (t *Table) Init() {
+	t.SetFixed(1, 0)
+	t.SetBorder(true)
+	t.SetBorderAttributes(tcell.AttrBold)
+	t.SetBorderPadding(0, 0, 1, 1)
+	t.SetSelectable(true, false)
+	t.SetBackgroundColor(tcell.ColorDefault)
+	t.SetTitle(t.Name)
+	t.Select(1, 0)
+}
+
+func (t *Table) Update(data *TableData) {
+	t.Clear()
+	t.buildHeader(data.Header)
+	for row, re := range data.Rows {
+		t.buildRow(row+1, re, data.Header)
+	}
+}
+
+func (t *Table) buildHeader(header Header) {
+	for c, col := range header {
+		log.Debug().Int("col", c).Str("Name", col.Name).Int("Align", col.Align).Bool("Wide", col.Wide).Msg("Building table Header")
+		cell := tview.NewTableCell(col.Name)
+		cell.SetExpansion(1)
+		cell.SetAlign(col.Align)
+		t.SetCell(0, c, cell).SetBorder(true)
+	}
+}
+
+func (t *Table) buildRow(r int, row Row, header Header) {
+	var col int
+	for c, field := range row.Fields {
+		log.Debug().Int("c", c).Int("Len(Header)", len(header)).Str("field", field).Msg("Building Table Row")
+		if c >= len(header) {
+			continue
+		}
+		cell := tview.NewTableCell(field)
+		cell.SetExpansion(1)
+		cell.SetAlign(header[c].Align)
+		if col == 0 {
+			cell.SetReference(row.ID)
+		}
+		t.SetCell(r, col, cell)
+		col++
+	}
+}
