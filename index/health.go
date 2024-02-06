@@ -2,13 +2,53 @@ package index
 
 import (
 	"os"
+	"time"
 	"weterm/model"
 	"weterm/pages"
 	"weterm/pages/healthcheck"
 	"weterm/pages/template"
+	"weterm/pages/template/table"
+
+	"github.com/gdamore/tcell/v2"
 )
 
 var componentHealthMenu = []MenuItem{
+	{
+		Name: "主机",
+		Action: func(bs *model.AppModel) {
+			viewName := "主机概览-每3秒刷新"
+			h := healthcheck.NewHostHealth()
+			table := table.NewTable(viewName)
+			bs.CorePages.AddPage(viewName, table, true, false)
+			bs.CorePages.SwitchToPage(viewName)
+			table.Init()
+			table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+				switch event.Key() {
+				case tcell.KeyF5:
+					go func() {
+						bs.CoreApp.QueueUpdateDraw(func() {
+							tableData := h.Check()
+							table.Update(&tableData)
+						})
+					}()
+				default:
+					return event
+				}
+				return nil
+			})
+			tableData := h.Check()
+			table.Update(&tableData)
+			ticker := time.NewTicker(time.Second * 3)
+			go func() {
+				for range ticker.C {
+					bs.CoreApp.QueueUpdateDraw(func() {
+						tableData := h.Check()
+						table.Update(&tableData)
+					})
+				}
+			}()
+		},
+	},
 	{
 		Name: "consul",
 		Action: func(bs *model.AppModel) {

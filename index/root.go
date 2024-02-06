@@ -50,16 +50,16 @@ var mainMenuItems = []MenuItem{
 		SubItems: serviceHealthMenu,
 	},
 	{
+		Name: "-- 主机状态",
+		Action: func(bs *model.AppModel) {
+		},
+		//SubItems: healthMenu,
+	},
+	{
 		Name: "-- 组件状态-未实现",
 		Action: func(bs *model.AppModel) {
 		},
 		SubItems: componentHealthMenu,
-	},
-	{
-		Name: "-- 主机状态-未实现",
-		Action: func(bs *model.AppModel) {
-		},
-		//SubItems: healthMenu,
 	},
 	{
 		Name: "运维工具-未实现",
