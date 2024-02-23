@@ -35,7 +35,8 @@ for container in containers:
     image_info = container["Image"].split(":")
     if len(image_info) == 1:
         image_info.append("latest")
-    json_output.append({"Image": image_info[0], "Tag": image_info[1]})
+    container_names = ", ".join(name.lstrip("/") for name in container["Names"])
+    json_output.append({"Image": image_info[0], "Tag": image_info[1], "Name": container_names})
 
 # Use json.dumps to print JSON output
 print(json.dumps(json_output))

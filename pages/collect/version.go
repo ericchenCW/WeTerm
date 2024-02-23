@@ -23,7 +23,12 @@ type VersionRow struct {
 	ID      string `json:"Image"`
 	Version string `json:"Tag"`
 	Name    string `json:"-"`
-	Node    string
+}
+
+type ImagesVersionRow struct {
+	VersionRow
+	Node string
+	Name string `json:"Name"`
 }
 
 var paasVersionHeader = table.Header{
@@ -36,6 +41,7 @@ var imageVersionHeader = table.Header{
 	table.HeaderColumn{Name: "Name"},
 	table.HeaderColumn{Name: "ID"},
 	table.HeaderColumn{Name: "Version"},
+	table.HeaderColumn{Name: "Node"},
 }
 
 func ParseRow(rows *sql.Rows) VersionRow {
@@ -48,7 +54,7 @@ func ParseRow(rows *sql.Rows) VersionRow {
 }
 
 func toRow(v VersionRow) table.Row {
-	row := table.NewRow(4)
+	row := table.NewRow(3)
 	row.Fields[0] = v.Name
 	row.Fields[1] = v.ID
 	row.Fields[2] = v.Version
@@ -59,6 +65,19 @@ func toTable(rows []VersionRow) table.TableData {
 	result := table.TableData{Header: paasVersionHeader}
 	for v := range rows {
 		result.Rows = append(result.Rows, toRow(rows[v]))
+	}
+	return result
+}
+
+func toImageTable(rows []ImagesVersionRow) table.TableData {
+	result := table.TableData{Header: imageVersionHeader}
+	for v := range rows {
+		r := table.NewRow(4)
+		r.Fields[0] = "[aqua]" + rows[v].Name
+		r.Fields[1] = "[yellow]" + rows[v].ID
+		r.Fields[2] = "[aqua]" + rows[v].Version
+		r.Fields[3] = "[yellow]" + rows[v].Node
+		result.Rows = append(result.Rows, r)
 	}
 	return result
 }
@@ -81,20 +100,23 @@ func GetAppVersion() table.TableData {
 }
 
 func GetImageVersion() table.TableData {
-	var result []VersionRow
+	var result []ImagesVersionRow
 	hosts := strings.Split(os.Getenv("ALL_IP_COMMA"), ",")
-	ch := make(chan []VersionRow, len(hosts))
+	ch := make(chan []ImagesVersionRow, len(hosts))
 	var wg sync.WaitGroup
 	for host := range hosts {
 		wg.Add(1)
 		go func(s string) {
 			raw := utils.RunSSH(s, imageScript)
-			var arr []VersionRow
+			var arr []ImagesVersionRow
 			err := json.Unmarshal(raw, &arr)
 			if err != nil {
 				log.Logger.Err(err).Msg("Unmarshal Docker images failed")
 			}
 			defer wg.Done()
+			for a := range arr {
+				arr[a].Node = s
+			}
 			ch <- arr
 		}(hosts[host])
 	}
@@ -103,5 +125,5 @@ func GetImageVersion() table.TableData {
 	for res := range ch {
 		result = append(result, res...)
 	}
-	return toTable(result)
+	return toImageTable(result)
 }
