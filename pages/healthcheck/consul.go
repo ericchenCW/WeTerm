@@ -1,9 +1,11 @@
 package healthcheck
 
 import (
-	"fmt"
 	"sort"
-	"strings"
+	"strconv"
+	"weterm/pages/template/table"
+
+	"github.com/rs/zerolog/log"
 
 	capi "github.com/hashicorp/consul/api"
 )
@@ -24,27 +26,19 @@ func NewConsulHealth() ConsulHealth {
 	}
 }
 
-func (h ConsulHealth) Check() []HealthResult {
-	result := []HealthResult{}
-	// 获取consul的选举情况
-	result = append(
-		result,
-		HealthResult{
-			status:  Common,
-			message: "Consul 选举状态:",
-		})
-	leader, err := h.c.Status().Leader()
-	if err != nil {
-		result = append(result, HealthResult{status: Error, message: err.Error()})
-	} else {
-		result = append(result, HealthResult{status: Healthy, message: fmt.Sprintf("[aqua]Leader: %s", leader)})
-	}
-	peers, err := h.c.Status().Peers()
-	if err != nil {
-		result = append(result, HealthResult{status: Error, message: err.Error()})
-	} else {
-		result = append(result, HealthResult{status: Healthy, message: fmt.Sprintf("Peers: %s", strings.Join(peers, ","))})
-	}
+func (h ConsulHealth) Check() table.TableData {
+	result := table.TableData{Header: table.Header{
+		table.HeaderColumn{Name: "Addr"},
+		table.HeaderColumn{Name: "Name"},
+		table.HeaderColumn{Name: "Port"},
+		table.HeaderColumn{Name: "DelegateCur"},
+		table.HeaderColumn{Name: "DelegateMax"},
+		table.HeaderColumn{Name: "DelegateMin"},
+		table.HeaderColumn{Name: "ProtocolCur"},
+		table.HeaderColumn{Name: "ProtocolMax"},
+		table.HeaderColumn{Name: "ProtocolMin"},
+		table.HeaderColumn{Name: "Status"},
+	}}
 	// 获取consul集群状态
 	members, err := h.c.Agent().Members(false)
 	//    Agent状态描述
@@ -54,53 +48,43 @@ func (h ConsulHealth) Check() []HealthResult {
 	//	  AgentMemberLeft    = 3
 	//	  AgentMemberFailed  = 4
 	//    这里简单处理，不正常的都返回Error
-	result = append(
-		result,
-		HealthResult{
-			status:  Common,
-			message: "Consul 集群状态:",
-		})
 	if err != nil {
-		result = append(result, HealthResult{status: Error, message: err.Error()})
+		log.Logger.Err(err).Msg("Get Consul Members Error")
 	}
 	for i := range members {
 		m := members[i]
-		if m.Status == 1 {
-			result = append(result, HealthResult{status: Healthy, message: h.buildMemberMessage(m)})
-		} else {
-			result = append(result, HealthResult{status: Error, message: h.buildMemberMessage(m)})
-		}
+		row := table.NewRow(10)
+		row.Fields[0] = m.Addr
+		row.Fields[1] = m.Name
+		row.Fields[2] = strconv.FormatUint(uint64(m.Port), 10)
+		row.Fields[3] = strconv.FormatUint(uint64(m.DelegateCur), 10)
+		row.Fields[4] = strconv.FormatUint(uint64(m.DelegateMax), 10)
+		row.Fields[5] = strconv.FormatUint(uint64(m.DelegateMin), 10)
+		row.Fields[6] = strconv.FormatUint(uint64(m.ProtocolCur), 10)
+		row.Fields[7] = strconv.FormatUint(uint64(m.ProtocolMax), 10)
+		row.Fields[8] = strconv.FormatUint(uint64(m.ProtocolMin), 10)
+		row.Fields[9] = h.buildColorStatus(m.Status)
+		result.Rows = append(result.Rows, row)
 	}
-
-	// 获取consul注册的服务状态
-	result = append(
-		result,
-		HealthResult{
-			status:  Common,
-			message: "Consul 服务状态:",
-		})
-	services, _, err := h.c.Health().State("any", nil)
-	if err != nil {
-		result = append(result, HealthResult{status: Error, message: err.Error()})
-	}
-	sort.Slice(services, func(i, j int) bool {
-		return services[i].ServiceName < services[j].ServiceName
+	sort.Slice(result.Rows, func(i, j int) bool {
+		return result.Rows[i].Fields[0] < result.Rows[j].Fields[0]
 	})
-
-	for _, k := range services {
-		if k.Status == "passing" {
-			result = append(result, HealthResult{status: Healthy, message: h.buildServiceMessage(k)})
-		} else {
-			result = append(result, HealthResult{status: Error, message: h.buildServiceMessage(k)})
-		}
-	}
 	return result
 }
 
-func (h ConsulHealth) buildMemberMessage(member *capi.AgentMember) string {
-	return fmt.Sprintf("[aqua]ID: [white]%s [aqua]Name: [white]%s [aqua]Addr: [white]%s, [aqua]Build: [white]%s, [aqua]Role: [white]%s", member.Tags["id"], member.Name, member.Addr, member.Tags["build"], member.Tags["role"])
-}
-
-func (h ConsulHealth) buildServiceMessage(service *capi.HealthCheck) string {
-	return fmt.Sprintf("Service: [yellow]%s \n              [aqua]ID: [yellow]%s \n              [aqua]Node: %s[yellow]\n              [aqua]Output: [white]%s \n", service.ServiceName, service.ServiceID, service.Node, service.Output)
+func (h ConsulHealth) buildColorStatus(status int) string {
+	switch status {
+	case 0:
+		return "[white]None"
+	case 1:
+		return "[green]Alive"
+	case 2:
+		return "[orange]Leaving"
+	case 3:
+		return "[red]Left"
+	case 4:
+		return "[red]Failed"
+	default:
+		return "[white]None"
+	}
 }

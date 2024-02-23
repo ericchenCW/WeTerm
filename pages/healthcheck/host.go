@@ -1,6 +1,7 @@
 package healthcheck
 
 import (
+	"bytes"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -9,34 +10,27 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"text/template"
 	"weterm/pages/template/table"
+	"weterm/utils"
 
 	"github.com/rs/zerolog/log"
-	"golang.org/x/crypto/ssh"
 )
-
-var tableHeader = table.Header{
-	table.HeaderColumn{Name: "IP"},
-	table.HeaderColumn{Name: "%CPU"},
-	table.HeaderColumn{Name: "%MEM"},
-	table.HeaderColumn{Name: "LOAD AVG"},
-}
 
 type HostHealth struct {
 	BaseHealthChecker
-	script string
+	baseScript   string
+	detailScript string
 }
 
 type ServerData struct {
-	CPUPercent     string          `json:"-"`
-	CPUPercentAUX  float64         `json:"cpu_percent"`
-	CPULoad        string          `json:"-"`
-	CPULoadAUX     []float64       `json:"cpu_load"`
-	Memory         Memory          `json:"memory"`
-	Swap           Memory          `json:"swap"`
-	Disk           map[string]Disk `json:"disk"`
-	DiskIODelta    DiskIODelta     `json:"disk_io_delta"`
-	NetworkIODelta NetworkIODelta  `json:"network_io_delta"`
+	CPUPercent    string    `json:"-"`
+	CPUPercentAUX float64   `json:"cpu_percent"`
+	CPULoad       string    `json:"-"`
+	CPULoadAUX    []float64 `json:"cpu_load"`
+	Memory        Memory    `json:"memory"`
+	Swap          Memory    `json:"swap"`
+	Time          string    `json:"datetime"`
 }
 
 type Memory struct {
@@ -55,35 +49,57 @@ type Disk struct {
 	Percent float64 `json:"percent"`
 }
 
-type DiskIODelta struct {
-	IOPS       int    `json:"IOPS"`
-	Throughput string `json:"throughput"`
+type HostDetail struct {
+	IP               string            `json:"-"`
+	Memory           string            `json:"memory_info"`
+	Swap             string            `json:"swap_info"`
+	LinuxDistro      string            `json:"linux_distro"`
+	KernelVersion    string            `json:"kernel_version"`
+	Hosts            []string          `json:"hosts"`
+	NetworkInterface map[string]string `json:"network_interfaces"`
+	DNSServers       []string          `json:"dns_servers"`
+	CPUDetail        CPUDetail         `json:"cpu_info"`
+	Disk             map[string]Disk   `json:"disk_usages"`
 }
 
-type NetworkIODelta struct {
-	Sent     string `json:"sent"`
-	Received string `json:"received"`
+type CPUDetail struct {
+	Brand string `json:"brand_model"`
+	Cores string `json:"cores"`
 }
 
 //go:embed asserts/host_base.py
-var src string
+var baseScript string
+
+//go:embed asserts/host_detail.py
+var detailScript string
+
+//go:embed asserts/host_detail.tpl
+var detailTemplate string
 
 func NewHostHealth() HostHealth {
 	return HostHealth{
-		script: src,
+		baseScript:   baseScript,
+		detailScript: detailScript,
 	}
 }
 
 func (h HostHealth) Check() table.TableData {
 	hosts := strings.Split(os.Getenv("ALL_IP_COMMA"), ",")
-	result := table.TableData{Header: tableHeader}
+	result := table.TableData{Header: table.Header{
+		table.HeaderColumn{Name: "IP"},
+		table.HeaderColumn{Name: "%CPU"},
+		table.HeaderColumn{Name: "%MEM"},
+		table.HeaderColumn{Name: "%SWAP"},
+		table.HeaderColumn{Name: "LOAD AVG"},
+		table.HeaderColumn{Name: "TIME"},
+	}}
 	ch := make(chan table.Row, len(hosts))
 	var wg sync.WaitGroup
 	for host := range hosts {
 		wg.Add(1)
 		go func(s string) {
 			defer wg.Done()
-			ch <- h.runSSH(s)
+			ch <- h.toBasicRow(utils.RunSSH(s, h.baseScript), s)
 		}(hosts[host])
 	}
 	wg.Wait()
@@ -97,43 +113,33 @@ func (h HostHealth) Check() table.TableData {
 	return result
 }
 
-func (h HostHealth) runSSH(host string) table.Row {
-	privateKeyPath := os.Getenv("HOME") + "/.ssh/id_rsa"
-	privateKeyBytes, err := os.ReadFile(privateKeyPath)
+func (h HostHealth) Detail(host string) bytes.Buffer {
+	var detail HostDetail
+	detailBytes := utils.RunSSH(host, h.detailScript)
+	err := json.Unmarshal(detailBytes, &detail)
+	detail.IP = host
 	if err != nil {
-		log.Error().Err(err).Msg("ReadPrivateKey failed")
+		log.Logger.Err(err).Msg("Unmarshal Host Detail failed")
 	}
-	privateKey, err := ssh.ParsePrivateKey(privateKeyBytes)
+	t := template.New("detail template")
+	t, err = t.Parse(detailTemplate)
 	if err != nil {
-		log.Error().Err(err).Msg("ParsePrivateKey failed")
-	}
-	config := &ssh.ClientConfig{
-		User: "root",
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(privateKey),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", host), config)
-	if err != nil {
-		log.Error().Err(err).Msg("SSH Dial failed")
-	}
-	defer client.Close()
-	session, err := client.NewSession()
-	if err != nil {
-		log.Error().Err(err).Msg("SSH Session failed")
-	}
-	defer session.Close()
-
-	output, err := session.Output("python -c '" + h.script + "'")
-	if err != nil {
-		log.Error().Err(err).Msg("Run Script failed")
+		log.Logger.Err(err).Msg("Host template parse Detail failed")
 	}
 
+	var tpl bytes.Buffer
+	err = t.Execute(&tpl, detail)
+	if err != nil {
+		log.Logger.Err(err).Msg("Host template render Detail failed")
+	}
+	return tpl
+}
+
+func (h HostHealth) toBasicRow(raw []byte, host string) table.Row {
 	var msg ServerData
-	err = json.Unmarshal(output, &msg)
+	err := json.Unmarshal(raw, &msg)
 	if err != nil {
-		log.Error().Err(err).Msg("Unmarshal JSON failed")
+		log.Error().Err(err).Msg("Unmarshal host row failed")
 	}
 	log.Debug().
 		Str("IP", host).
@@ -142,12 +148,14 @@ func (h HostHealth) runSSH(host string) table.Row {
 		Str("CPULoad", msg.CPULoad).
 		Msg("Build Host Health Row")
 
-	row := table.NewRow(4)
+	row := table.NewRow(6)
 	row.ID = host
-	row.Fields[0] = "[aqua]" + host
+	row.Fields[0] = host
 	row.Fields[1] = msg.CPUPercent
 	row.Fields[2] = msg.Memory.Percent
-	row.Fields[3] = msg.CPULoad
+	row.Fields[3] = msg.Swap.Percent
+	row.Fields[4] = msg.CPULoad
+	row.Fields[5] = "[aqua]" + msg.Time
 	return row
 }
 
@@ -164,6 +172,7 @@ func (sd *ServerData) UnmarshalJSON(data []byte) error {
 	sd.CPUPercent = sd.buildColorPercent(sd.CPUPercentAUX)
 	sd.CPULoad = sd.float64SliceToString(sd.CPULoadAUX, "%.2f")
 	sd.Memory.Percent = sd.buildColorPercent(sd.Memory.PercentAUX)
+	sd.Swap.Percent = sd.buildColorPercent(sd.Swap.PercentAUX)
 	return nil
 }
 
@@ -186,55 +195,45 @@ func (sd *ServerData) float64SliceToString(f []float64, format string) string {
 	return strings.Join(s, ", ")
 }
 
-// func (s ServerData) BuildMessage(ip string) string {
-// 	r1_ip := fmt.Sprintf("[white]%s", ip)
-// 	load_arr := strings.Join(strings.Fields(fmt.Sprint(s.CPULoad)), "")
-// 	r2_cpu := fmt.Sprintf("        [aqua]CPU %%: %f        [aqua]CPU LOAD: %s        ", s.CPUPercent, load_arr)
-// 	r3_mem := fmt.Sprintf(
-// 		"        [aqua]MEM %%: [yellow]%f        [aqua]Total: [yellow]%s        [aqua]Used: [yellow]%s        [aqua]Free: [yellow]%s",
-// 		s.Memory.Percent,
-// 		s.Memory.Total,
-// 		s.Memory.Used,
-// 		s.Memory.Free,
-// 	)
-// 	r4_swap := fmt.Sprintf(
-// 		"        [aqua]SWAP %%: [yellow]%f        [aqua]Total: [yellow]%s        [aqua]Used: [yellow]%s        [aqua]Free: [yellow]%s",
-// 		s.Swap.Percent,
-// 		s.Swap.Total,
-// 		s.Swap.Used,
-// 		s.Swap.Free,
-// 	)
-// 	r5_diskio := fmt.Sprintf(
-// 		"        [aqua]IOPS: [yellow]%d        [aqua]Throughput: [yellow]%s",
-// 		s.DiskIODelta.IOPS,
-// 		s.DiskIODelta.Throughput,
-// 	)
-// 	r6_netio := fmt.Sprintf(
-// 		"        [aqua]Sent: [yellow]%s        [aqua]Received: [yellow]%s",
-// 		s.NetworkIODelta.Sent,
-// 		s.NetworkIODelta.Received,
-// 	)
-// 	r7_disk := "        [White]Disk\n"
-// 	for device := range s.Disk {
-// 		str := fmt.Sprintf(
-// 			"        [aqua]%s        [aqua]%%: [yellow]%f        [aqua]Total: [yellow]%s        [aqua]Used: [yellow]%s        [aqua]Free: [yellow]%s\n",
-// 			device,
-// 			s.Disk[device].Percent,
-// 			s.Disk[device].Total,
-// 			s.Disk[device].Used,
-// 			s.Disk[device].Free,
-// 		)
-// 		r7_disk = r7_disk + str
-// 	}
-// 	body := fmt.Sprintf(
-// 		"%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
-// 		r1_ip,
-// 		r2_cpu,
-// 		r3_mem,
-// 		r4_swap,
-// 		r5_diskio,
-// 		r6_netio,
-// 		r7_disk,
-// 	)
-// 	return body
-// }
+func (h *HostHealth) SaveHostDetails() string {
+	var details []HostDetail
+	hosts := strings.Split(os.Getenv("ALL_IP_COMMA"), ",")
+	ch := make(chan []byte, len(hosts))
+	var wg sync.WaitGroup
+	for host := range hosts {
+		wg.Add(1)
+		go func(s string) {
+			defer wg.Done()
+			ch <- utils.RunSSH(s, h.baseScript)
+		}(hosts[host])
+	}
+	wg.Wait()
+	close(ch)
+	for raw := range ch {
+		var detail HostDetail
+		err := json.Unmarshal(raw, &detail)
+		if err != nil {
+			log.Logger.Err(err).Msg("Unmarshal Host Raw failed")
+			continue
+		}
+		details = append(details, detail)
+	}
+	jsonData, err := json.MarshalIndent(details, "", " ")
+	if err != nil {
+		log.Logger.Err(err).Msg("Marshal Host Raw failed")
+		return "Marshal Host Raw failed"
+	}
+	dir, err := os.MkdirTemp("/tmp", "weterm_*")
+	if err != nil {
+		log.Logger.Err(err).Msg("Make temp dir failed")
+		return "Marshal Host Raw failed"
+	}
+	fileName := "hosts_detail.json"
+	path := dir + fileName
+	err = os.WriteFile(path, jsonData, 0644)
+	if err != nil {
+		log.Logger.Err(err).Str("Path", path).Msg("Save File failed")
+		return "Save File failed"
+	}
+	return "保存成功，文件目录:" + path
+}

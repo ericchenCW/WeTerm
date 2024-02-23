@@ -2,6 +2,7 @@
 import psutil
 import time
 import json
+from datetime import datetime
 
 def bytes_to_readable(bytes):
     """将字节转换为可读的字符串(kB, MB, GB, TB)"""
@@ -73,6 +74,7 @@ data = {
     "memory": memory_dict,
     "swap": swap_dict,
     "disk": disk_usage,
+    "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # "disk_io_delta": disk_io_delta,
     # "network_io_delta": net_io_delta,
 }
