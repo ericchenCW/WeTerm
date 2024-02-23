@@ -9,11 +9,21 @@ import (
 
 var collectMenu = []MenuItem{
 	{
-		Name: "版本信息",
+		Name: "Paas和Saas版本信息",
 		Action: func(bs *model.AppModel) {
-			viewName := "版本信息"
+			viewName := "Paas和Saas版本信息"
 			t := table.NewTable(viewName)
-			tableData := collect.GetVersion()
+			tableData := collect.GetAppVersion()
+			t.Update(&tableData)
+			t.BuildTable(bs, viewName, time.Duration(1), nil, nil)
+		},
+	},
+	{
+		Name: "镜像版本信息",
+		Action: func(bs *model.AppModel) {
+			viewName := "镜像版本信息"
+			t := table.NewTable(viewName)
+			tableData := collect.GetImageVersion()
 			t.Update(&tableData)
 			t.BuildTable(bs, viewName, time.Duration(1), nil, nil)
 		},
