@@ -1,6 +1,9 @@
 package table
 
 import (
+	"time"
+	"weterm/model"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
@@ -14,7 +17,10 @@ type HeaderColumn struct {
 	Name  string
 	Align int
 	Wide  bool
+	Color tcell.Color
 }
+
+type RefreshFunction func() TableData
 
 type Row struct {
 	ID     string
@@ -50,10 +56,14 @@ func (t *Table) Init() {
 	t.SetBorder(true)
 	t.SetBorderAttributes(tcell.AttrBold)
 	t.SetBorderPadding(0, 0, 1, 1)
-	t.SetSelectable(true, false)
+	t.SetDoneFunc(func(key tcell.Key) {
+		if key == tcell.KeyEnter {
+			t.SetSelectable(true, false)
+		}
+	})
 	t.SetBackgroundColor(tcell.ColorDefault)
 	t.SetTitle(t.Name)
-	t.Select(1, 0)
+	t.Select(0, 0)
 }
 
 func (t *Table) Update(data *TableData) {
@@ -66,7 +76,12 @@ func (t *Table) Update(data *TableData) {
 
 func (t *Table) buildHeader(header Header) {
 	for c, col := range header {
-		log.Debug().Int("col", c).Str("Name", col.Name).Int("Align", col.Align).Bool("Wide", col.Wide).Msg("Building table Header")
+		log.Debug().
+			Int("col", c).
+			Str("Name", col.Name).
+			Int("Align", col.Align).
+			Bool("Wide", col.Wide).
+			Msg("Building table Header")
 		cell := tview.NewTableCell(col.Name)
 		cell.SetExpansion(1)
 		cell.SetAlign(col.Align)
@@ -89,5 +104,26 @@ func (t *Table) buildRow(r int, row Row, header Header) {
 		}
 		t.SetCell(r, col, cell)
 		col++
+	}
+}
+
+func (table *Table) BuildTable(bs *model.AppModel, viewName string, refreshPeriod time.Duration, refreshFunction *RefreshFunction, selectedFunction *func(row, col int)) {
+	bs.CorePages.AddPage(viewName, table, true, false)
+	bs.CorePages.SwitchToPage(viewName)
+	if selectedFunction != nil {
+		log.Logger.Debug().Msg("Set SelectedFunction")
+		table.SetSelectedFunc(*selectedFunction)
+	}
+	table.Init()
+	if refreshFunction != nil {
+		ticker := time.NewTicker(time.Second * refreshPeriod)
+		go func() {
+			for range ticker.C {
+				bs.CoreApp.QueueUpdateDraw(func() {
+					tableData := (*refreshFunction)()
+					table.Update(&tableData)
+				})
+			}
+		}()
 	}
 }

@@ -16,7 +16,7 @@ type MenuItem struct {
 
 var aioMainMenuItems = []MenuItem{
 	{
-		Name: "WeOps一体机启动",
+		Name: "WeOps一体机",
 		Action: func(bs *model.AppModel) {
 		},
 		SubItems: aioMenu,
@@ -31,84 +31,89 @@ var mainMenuItems = []MenuItem{
 	//	},
 	//	SubItems: sampleMenu,
 	//},
+	// {
+	// 	Name: "WeOps安装",
+	// 	Action: func(bs *model.AppModel) {
+	// 	},
+	// 	SubItems: installMenu,
+	// },
 	{
-		Name: "WeOps安装",
-		Action: func(bs *model.AppModel) {
-		},
-		SubItems: installMenu,
-	},
-	{
-		Name: "健康检查",
-		Action: func(bs *model.AppModel) {
-		},
-		//SubItems: healthMenu,
-	},
-	{
-		Name: "-- 服务状态",
-		Action: func(bs *model.AppModel) {
-		},
-		SubItems: serviceHealthMenu,
-	},
-	{
-		Name: "-- 主机状态",
-		Action: func(bs *model.AppModel) {
-		},
-		//SubItems: healthMenu,
-	},
-	{
-		Name: "-- 组件状态-未实现",
+		Name: "服务概览",
 		Action: func(bs *model.AppModel) {
 		},
 		SubItems: componentHealthMenu,
 	},
 	{
-		Name: "运维工具-未实现",
-		Action: func(bs *model.AppModel) {
-		},
-		//SubItems: opsMenu,
+		Name:     "信息收集",
+		Action:   func(am *model.AppModel) {},
+		SubItems: collectMenu,
 	},
-	{
-		Name: "-- 服务启停-未实现",
-		Action: func(bs *model.AppModel) {
-		},
-		SubItems: servicesOpsMenu,
-	},
-	{
-		Name: "-- 组件操作-未实现",
-		Action: func(bs *model.AppModel) {
-		},
-		SubItems: componentsOpsMenu,
-	},
-	{
-		Name: "-- 备份恢复-未实现",
-		Action: func(bs *model.AppModel) {
-		},
-		//SubItems: opsMenu,
-	},
-	{
-		Name: "-- 组件操作-未实现",
-		Action: func(bs *model.AppModel) {
-		},
-		//SubItems: opsMenu,
-	},
-	{
-		Name: "-- 磁盘清理-未实现",
-		Action: func(bs *model.AppModel) {
-		},
-		//SubItems: opsMenu,
-	},
-	{
-		Name: "-- 接入点操作-未实现",
-		Action: func(bs *model.AppModel) {
-		},
-		//SubItems: opsMenu,
-	},
-	{
-		Name: "-- 数据初始化-未实现",
-		Action: func(bs *model.AppModel) {
-		},
-		//SubItems: opsMenu,
-	},
+	// {
+	// 	Name: "-- 服务状态",
+	// 	Action: func(bs *model.AppModel) {
+	// 	},
+	// 	SubItems: serviceHealthMenu,
+	// },
+	// {
+	// 	Name: "-- 主机状态",
+	// 	Action: func(bs *model.AppModel) {
+	// 	},
+	// 	//SubItems: healthMenu,
+	// },
+	// {
+	// 	Name: "-- 组件状态-未实现",
+	// 	Action: func(bs *model.AppModel) {
+	// 	},
+	// 	SubItems: componentHealthMenu,
+	// },
+	// {
+	// 	Name: "运维工具-未实现",
+	// 	Action: func(bs *model.AppModel) {
+	// 	},
+	// 	//SubItems: opsMenu,
+	// },
+	// {
+	// 	Name: "-- 服务启停-未实现",
+	// 	Action: func(bs *model.AppModel) {
+	// 	},
+	// 	SubItems: servicesOpsMenu,
+	// },
+	// {
+	// 	Name: "-- 组件操作-未实现",
+	// 	Action: func(bs *model.AppModel) {
+	// 	},
+	// 	SubItems: componentsOpsMenu,
+	// },
+	// {
+	// 	Name: "-- 备份恢复-未实现",
+	// 	Action: func(bs *model.AppModel) {
+	// 	},
+	// 	//SubItems: opsMenu,
+	// },
+	// {
+	// 	Name: "-- 组件操作-未实现",
+	// 	Action: func(bs *model.AppModel) {
+	// 	},
+	// 	//SubItems: opsMenu,
+	// },
+	// {
+	// 	Name: "-- 磁盘清理-未实现",
+	// 	Action: func(bs *model.AppModel) {
+	// 	},
+	// 	//SubItems: opsMenu,
+	// },
+	// {
+	// 	Name: "-- 接入点操作-未实现",
+	// 	Action: func(bs *model.AppModel) {
+	// 	},
+	// 	//SubItems: opsMenu,
+	// },
+	// {
+	// 	Name: "-- 数据初始化-未实现",
+	// 	Action: func(bs *model.AppModel) {
+	// 	},
+	// 	//SubItems: opsMenu,
+	// },
 	{
 		Name: "退出",
 		Action: func(bs *model.AppModel) {
