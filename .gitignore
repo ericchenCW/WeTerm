@@ -5,3 +5,4 @@ weterm.log
 .vscode/launch.json
 bin/
 .vscode/
+.env

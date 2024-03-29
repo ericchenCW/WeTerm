@@ -99,7 +99,7 @@ func (h HostHealth) Check() table.TableData {
 		wg.Add(1)
 		go func(s string) {
 			defer wg.Done()
-			ch <- h.toBasicRow(utils.RunSSH(s, h.baseScript), s)
+			ch <- h.toBasicRow(utils.RunSSH(s, h.baseScript, "python"), s)
 		}(hosts[host])
 	}
 	wg.Wait()
@@ -115,7 +115,7 @@ func (h HostHealth) Check() table.TableData {
 
 func (h HostHealth) Detail(host string) bytes.Buffer {
 	var detail HostDetail
-	detailBytes := utils.RunSSH(host, h.detailScript)
+	detailBytes := utils.RunSSH(host, h.detailScript, "python")
 	err := json.Unmarshal(detailBytes, &detail)
 	detail.IP = host
 	if err != nil {
@@ -204,7 +204,7 @@ func (h *HostHealth) SaveHostDetails() string {
 		wg.Add(1)
 		go func(s string) {
 			defer wg.Done()
-			ch <- utils.RunSSH(s, h.baseScript)
+			ch <- utils.RunSSH(s, h.baseScript, "python")
 		}(hosts[host])
 	}
 	wg.Wait()

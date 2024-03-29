@@ -48,6 +48,11 @@ var mainMenuItems = []MenuItem{
 		Action:   func(am *model.AppModel) {},
 		SubItems: collectMenu,
 	},
+	{
+		Name:     "配置管理",
+		Action:   func(bs *model.AppModel) {},
+		SubItems: configMenu,
+	},
 	// {
 	// 	Name: "-- 服务状态",
 	// 	Action: func(bs *model.AppModel) {
