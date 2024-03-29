@@ -4,6 +4,7 @@ import (
 	"time"
 	"weterm/model"
 	"weterm/pages/collect"
+	"weterm/pages/template"
 	"weterm/pages/template/table"
 )
 
@@ -26,6 +27,12 @@ var collectMenu = []MenuItem{
 			tableData := collect.GetImageVersion()
 			t.Update(&tableData)
 			t.BuildTable(bs, viewName, time.Duration(1), nil, nil)
+		},
+	},
+	{
+		Name: "日志文件采集",
+		Action: func(bs *model.AppModel) {
+			template.ShowShellExecutePage(bs, "日志文件采集", collect.SyncLogScript)
 		},
 	},
 }

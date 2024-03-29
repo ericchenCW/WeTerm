@@ -7,38 +7,46 @@ source /data/install/functions
 source /data/install/utils.fc
 export SOURCE_LAN_IP=20.144.0.100
 
+step_echo() {
+    echo -e "[green]$1[white]"
+}
+
+info_echo() {
+    echo -e "[blue]$1[white]"
+}
+
 if [[ -n "$SSH_CONNECTION" ]]; then
     ssh_info=($SSH_CONNECTION)
     LAN_IP=${ssh_info[2]}
-    echo "auto guess current LAN_IP is $LAN_IP"
+    info_echo "auto guess current LAN_IP is $LAN_IP"
 else
-    echo "can't auto-get LAN_IP for this host"
+    info_echo "can't auto-get LAN_IP for this host"
     exit 1
 fi
 
-echo "[green]WEOPS_LAN_IP ${LAN_IP}[white]"
+step_echo "WEOPS_LAN_IP ${LAN_IP}"
 echo $LAN_IP > /data/install/.controller_ip
 echo "LAN_IP=$LAN_IP" > /etc/blueking/env/local.env
 
-echo "[green]render install.config[white]"
+step_echo "render install.config"
 sed -i "s/$SOURCE_LAN_IP/$LAN_IP/" /data/install/install.config
 
-echo "[green]add resolve[white]"
+step_echo "add resolve"
 if grep -w 127.0.0.1 /etc/resolv.conf > /dev/null 2>&1;then
-    echo "nameserver 127.0.0.1 already exist"
+    info_echo "nameserver 127.0.0.1 already exist"
 else
     sed -i "1i nameserver 127.0.0.1" /etc/resolv.conf
 fi
 
-echo "[green]restart third compoents[white]"
+step_echo "restart third compoents"
 echo consul mysql redis rabbitmq mongodb zk kafka es7 influxdb | xargs -n 1 /data/install/bkcli restart
 
-echo "[green]restart blueking compoents[white]"
+step_echo "restart blueking compoents"
 echo license bkiam usermgr paas appo cmdb bknodeman bkmonitorv3 | xargs -n 1 /data/install/bkcli restart
 
 sleep 1m
 
-echo "[green]reinstall paas[white]"
+step_echo "reinstall paas"
 bash ./configure_ssh_without_pass
 
 cd /data/install && ./bk_install common && ./health_check/check_bk_controller.sh && ./bk_install paas && ./bk_install app_mgr \
@@ -46,11 +54,11 @@ cd /data/install && ./bk_install common && ./health_check/check_bk_controller.sh
 && ./bk_install bknodeman \
 && ./bk_install saas-o bk_iam && ./bk_install saas-o bk_user_manage
 
-echo "[green]replace zk ip[white]"
+step_echo "replace zk ip"
 sed -i "s/${SOURCE_LAN_IP}/${LAN_IP}/g" /etc/zookeeper/zoo.cfg /etc/consul.d/service/zk.json
 systemctl restart zookeeper
 
-echo "[green]replace redis ip[white]"
+step_echo "replace redis ip"
 if grep -w ${LAN_IP} /etc/redis/default.conf > /dev/null 2>&1;then
     echo "${LAN_IP} already in /etc/redis/default.conf"
 else 
@@ -59,7 +67,7 @@ fi
 
 systemctl restart redis@default
 
-echo "[green]replace mongodb ip[white]"
+step_echo "replace mongodb ip"
 if grep -w ${LAN_IP} /etc/mongod.conf > /dev/null 2>&1;then
     echo "${LAN_IP} already in /etc/mongod.conf"
 else 
@@ -68,35 +76,35 @@ fi
 
 systemctl restart mongod
 
-echo "[green]render consul[white]"
+step_echo "render consul"
 sed -i "s/$SOURCE_LAN_IP/$LAN_IP/" /etc/consul.d/service/cmdb* /etc/consul.d/service/gse* /etc/consul.d/service/nodeman* /etc/consul.d/service/redis*
 
-echo "[green]restart consul[white]"
+step_echo "restart consul"
 /data/install/bkcli restart consul
 
 sleep 30
 
-echo "[green]restart kafka[white]"
+step_echo "restart kafka"
 /data/install/bkcli restart kafka
 
-echo "[green]restart gse[white]"
+step_echo "restart gse"
 /data/install/bkcli render gse && /data/install/bkcli restart gse
 
-echo "[green]add resolve[white]"
+step_echo "add resolve"
 if grep -w 127.0.0.1 /etc/resolv.conf > /dev/null 2>&1;then
     echo "nameserver 127.0.0.1 already exist"
 else
     sed -i "1i nameserver 127.0.0.1" /etc/resolv.conf
 fi
 
-echo "[green]restart nodeman[white]"
+step_echo "restart nodeman"
 /data/install/bkcli render bknodeman && /data/install/bkcli restart bknodeman
 
-echo "[green]update agent ip[white]"
+step_echo "update agent ip"
 jq -r ".agentip=\"${LAN_IP}\"| .identityip=\"${LAN_IP}\" | .zkhost=\"${LAN_IP}:2181\"" /usr/local/gse/agent/etc/agent.conf > /tmp/agent.conf && \
 mv -vf /tmp/agent.conf /usr/local/gse/agent/etc/agent.conf
 
-echo "[green]restart agent[white]"
+step_echo "restart agent"
 pushd /usr/local/gse/agent/bin
 ./gsectl restart
 popd
@@ -106,7 +114,7 @@ pushd /usr/local/gse/plugins/bin
 ./restart.sh bkmonitorbeat
 popd
 
-echo "[green]replace default access point[white]"
+step_echo "replace default access point"
 pushd /data/bkce/bknodeman/nodeman
 source bin/environ.sh
 /data/bkce/.envs/bknodeman-nodeman/bin/python manage.py shell <<EOF
@@ -132,27 +140,39 @@ EOF
 popd
 /data/install/bkcli restart bknodeman
 
-echo "[green]restart job[white]"
+step_echo "restart job"
 /data/install/bkcli render job && /data/install/bkcli restart job && systemctl restart bk-job-execute
 
 
-echo "[green]update weops_saas environment values[white]"
+step_echo "update weops_saas environment values"
 mysql --login-path=mysql-default --database=open_paas <<EOF
 update paas_app_envvars set value="${LAN_IP}" where app_code="weops_saas" and \`name\`="BKAPP_SOURCE_IP";
 update paas_app_envvars set value="${LAN_IP}:9292" where app_code="weops_saas" and \`name\`="BKAPP_KAFKA_HOST";
+update paas_app_envvars set value="http://${LAN_IP}:9001" where app_code="weops_saas" and \`name\`="BKAPP_CMDB_HOST";
+update paas_app_envvars set value="http://${LAN_IP}:9000" where app_code="weops_saas" and \`name\`="BKAPP_GRAYLOG_URL";
 EOF
 
-echo "[green]deploy weops[white]"
-find /data/src/official_saas/weops_saas* | sort -r | head -n 1 | xargs -I{} /opt/py36/bin/python /data/install/bin/saas.py -e appo -n weops_saas -k {} -f /data/install/bin/04-final/paas.env
+_deploy_saas (){     find /data/src/official_saas/${1}* | sort -r | head -n 1 | xargs -I{} /opt/py36/bin/python /data/install/bin/saas.py -e appo -n ${1} -k {} -f /data/install/bin/04-final/paas.env; }
 
-echo "[green]up docker services[white]"
+step_echo "deploy saas"
+echo "monitorcenter_saas cw_uac_saas bk_itsm weops_saas" | xargs -n 1 _deploy_saas
+
+step_echo "up docker services"
 docker start $(docker ps -aq)
 
-echo "[green]update datainsight kafka lan ip[white]"
+step_echo "update datainsight kafka lan ip"
 sed -i "s/$SOURCE_LAN_IP:9292/$LAN_IP:9292/" /data/weops/datainsight/docker-compose.yaml
 docker-compose -f /data/weops/datainsight/docker-compose.yaml up -d
 
-echo "[green]init topo[white]"
+step_echo "unseal vault"
+docker exec vault sh -c "export VAULT_ADDR=http://127.0.0.1:8200 && vault operator unseal ${VAULT_UNSEAL_CODE}"
+
+step_echo "reset casbin-mesh"
+docker stop casbin_mesh
+rm -rvf /data/weops/casbin-mesh/*
+docker restart casbin_mesh
+
+step_echo "init topo"
 # 清理存量拓扑记录
 mongo -u $BK_CMDB_MONGODB_USERNAME -p $BK_CMDB_MONGODB_PASSWORD mongodb://$LAN_IP:$BK_CMDB_MONGODB_PORT/cmdb --authenticationDatabase cmdb << "EOF"
 db.cc_ServiceTemplate.remove({"bk_biz_id":2})

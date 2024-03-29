@@ -107,7 +107,7 @@ func GetImageVersion() table.TableData {
 	for host := range hosts {
 		wg.Add(1)
 		go func(s string) {
-			raw := utils.RunSSH(s, imageScript)
+			raw := utils.RunSSH(s, imageScript, "python")
 			var arr []ImagesVersionRow
 			err := json.Unmarshal(raw, &arr)
 			if err != nil {

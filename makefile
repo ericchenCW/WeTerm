@@ -1,6 +1,6 @@
+include .env
 # 可执行文件名
 BINARY_NAME=bin/weterm
-
 # 确保命令在 $PATH 找不到是，使用绝对路径
 GOBUILD=go build
 GIT=git
@@ -25,3 +25,7 @@ clean:
 
 run: setup
 	go run main.go
+
+# 如果存在SYNC_COMMAND变量，则执行同步命令
+sync: build
+	if [ -n "$(SYNC_COMMAND)" ]; then $(SYNC_COMMAND); fi
