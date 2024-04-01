@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source /data/install/utils.fc
+source /data/install/functions
 
 tmpdir=$(mktemp -d)
 
@@ -28,8 +29,10 @@ tar -czf /tmp/${filename} .
 popd ${tmpdir}
 
 echo "[aqua]开始分发日志[white]"
-rsync -avzP /tmp/${filename} $BK_NGINX_IP:/data/weops/logs/${filename}
+/data/install/pcmd.sh -H $BK_NGINX_IP "install -d -m 0755 -o blueking -g blueking /data/weops/logs"
+rsync -avzP --chmod=644 --chown=blueking:blueking /tmp/${filename} $BK_NGINX_IP:/data/weops/logs/${filename}
 
 echo "[green]日志同步完成"
 echo "可以从  [aqua]$BK_PAAS_PUBLIC_URL/logs/${filename}[green]  下载日志"
 rm -rf ${tmpdir} 
+rm -rf /tmp/${filename}
