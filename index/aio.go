@@ -2,6 +2,7 @@ package index
 
 import (
 	"weterm/model"
+	"weterm/pages/aio"
 	"weterm/pages/template"
 )
 
@@ -9,7 +10,7 @@ var aioMenu = []MenuItem{
 	{
 		Name: "服务初始化—IP更新",
 		Action: func(bs *model.AppModel) {
-			template.ShowShellExecutePage(bs, "服务初始化", "bash /data/install/aio/init_ip.sh 2>&1")
+			template.ShowShellExecutePage(bs, "服务初始化", aio.InitIPScript)
 		},
 	},
 	{

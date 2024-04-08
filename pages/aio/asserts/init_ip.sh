@@ -19,6 +19,8 @@ if [[ -n "$SSH_CONNECTION" ]]; then
     ssh_info=($SSH_CONNECTION)
     LAN_IP=${ssh_info[2]}
     info_echo "auto guess current LAN_IP is $LAN_IP"
+    bash /data/install/configure_ssh_without_pass
+    setcap 'cap_net_bind_service=+ep' /usr/bin/consul
 else
     info_echo "can't auto-get LAN_IP for this host"
     exit 1
@@ -47,7 +49,6 @@ echo license bkiam usermgr paas appo cmdb bknodeman bkmonitorv3 | xargs -n 1 /da
 sleep 1m
 
 step_echo "reinstall paas"
-bash ./configure_ssh_without_pass
 
 cd /data/install && ./bk_install common && ./health_check/check_bk_controller.sh && ./bk_install paas && ./bk_install app_mgr \
 && ./bk_install cmdb && ./bk_install job \
@@ -149,13 +150,13 @@ mysql --login-path=mysql-default --database=open_paas <<EOF
 update paas_app_envvars set value="${LAN_IP}" where app_code="weops_saas" and \`name\`="BKAPP_SOURCE_IP";
 update paas_app_envvars set value="${LAN_IP}:9292" where app_code="weops_saas" and \`name\`="BKAPP_KAFKA_HOST";
 update paas_app_envvars set value="http://${LAN_IP}:9001" where app_code="weops_saas" and \`name\`="BKAPP_CMDB_HOST";
-update paas_app_envvars set value="http://${LAN_IP}:9000" where app_code="weops_saas" and \`name\`="BKAPP_GRAYLOG_URL";
+update paas_app_envvars set value="http://${LAN_IP}:9090" where app_code="weops_saas" and \`name\`="BKAPP_GRAYLOG_URL";
 EOF
 
-_deploy_saas (){     find /data/src/official_saas/${1}* | sort -r | head -n 1 | xargs -I{} /opt/py36/bin/python /data/install/bin/saas.py -e appo -n ${1} -k {} -f /data/install/bin/04-final/paas.env; }
-
 step_echo "deploy saas"
-echo "monitorcenter_saas cw_uac_saas bk_itsm weops_saas" | xargs -n 1 _deploy_saas
+for i in monitorcenter_saas cw_uac_saas bk_itsm weops_saas;do 
+    /data/install/bk_install saas-o ${i} 2>&1
+done
 
 step_echo "up docker services"
 docker start $(docker ps -aq)

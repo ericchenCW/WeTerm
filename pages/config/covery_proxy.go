@@ -38,8 +38,20 @@ func Sync() bytes.Buffer {
 		for _, file := range files {
 			f, _ := fs.Open(embedPath + file)
 			target := basePath + file
+			log.Debug().Str("host", host).Str("file", file).Str("target", target).Msg("CopyFileBySSH")
 			utils.CopyFileBySSH(host, f, target, output, file)
 		}
+	}
+	script, err := fs.ReadFile(embedPath + reloadScript)
+	if err != nil {
+		str := fmt.Sprintf("[red]Read reload script failed[white]: [yellow]%s[white]\n", err)
+		io.WriteString(output, str)
+	}
+	log.Logger.Debug().Str("script", string(script)).Msg("Reload Openresty")
+	for _, host := range hosts {
+		utils.RunSSH(host, string(script), "bash")
+		str := fmt.Sprintf("Reload Openresty on Host [aqua]%s[white] [green]success[white]\n", host)
+		io.WriteString(output, str)
 	}
 
 	return *output

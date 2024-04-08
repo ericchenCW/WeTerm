@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 
+	"github.com/kevinburke/ssh_config"
 	"github.com/pkg/sftp"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/ssh"
@@ -45,7 +46,10 @@ func CopyFileBySSH(host string, src fs.File, dst string, output io.Writer, filen
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", host), config)
+	ssh_config.Get(host, "User")
+	addr := host + ":" + ssh_config.Get(host, "Port")
+	log.Debug().Str("addr", addr).Msg("Start SSH Dial")
+	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
 		log.Error().Err(err).Msg("SSH Dial failed")
 	}
@@ -61,7 +65,7 @@ func CopyFileBySSH(host string, src fs.File, dst string, output io.Writer, filen
 
 	dstFile, err := s.Create(dst)
 	if err != nil {
-		log.Error().Err(err).Msg("SFTP FILE Create failed")
+		log.Error().Str("dst", dst).Str("host", host).Str("filename", filename).Err(err).Msg("SFTP FILE Create failed")
 	}
 	defer dstFile.Close()
 	log.Debug().Any("src", src).Any("dst", dstFile).Any("writer", progressWriter).Msg("Start copy file")
@@ -72,6 +76,8 @@ func CopyFileBySSH(host string, src fs.File, dst string, output io.Writer, filen
 }
 
 func RunSSH(host string, script string, shell string) []byte {
+	ssh_config.Get(host, "User")
+	addr := host + ":" + ssh_config.Get(host, "Port")
 	privateKeyPath := os.Getenv("HOME") + "/.ssh/id_rsa"
 	privateKeyBytes, err := os.ReadFile(privateKeyPath)
 	if err != nil {
@@ -88,7 +94,7 @@ func RunSSH(host string, script string, shell string) []byte {
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", host), config)
+	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
 		log.Error().Err(err).Msg("SSH Dial failed")
 	}
