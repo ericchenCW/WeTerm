@@ -7,6 +7,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/hashicorp/consul/api v1.26.1
 	github.com/joho/godotenv v1.5.1
+	github.com/kevinburke/ssh_config v1.2.0
 	github.com/mattn/go-colorable v0.1.13
 	github.com/navidys/tvxwidgets v0.4.0
 	github.com/pkg/sftp v1.13.6
