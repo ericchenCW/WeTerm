@@ -18,8 +18,13 @@ info_echo() {
 if [[ -n "$SSH_CONNECTION" ]]; then
     ssh_info=($SSH_CONNECTION)
     LAN_IP=${ssh_info[2]}
-    info_echo "auto guess current LAN_IP is $LAN_IP"
-    bash /data/install/configure_ssh_without_pass
+    info_echo "auto guess current LAN_IP is [yellow]$LAN_IP"
+    if grep -w ${LAN_IP} ~/.ssh/known_hosts > /dev/null 2>&1;then
+        info_echo "${LAN_IP} already in ~/.ssh/known_hosts"
+    else
+        ssh -o StrictHostKeyChecking=no -o CheckHostIP=no root@${LAN_IP} "hostname -I"
+        info_echo "ssh to ${LAN_IP}"
+    fi
     setcap 'cap_net_bind_service=+ep' /usr/bin/consul
 else
     info_echo "can't auto-get LAN_IP for this host"
