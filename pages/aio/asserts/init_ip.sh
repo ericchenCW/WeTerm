@@ -154,12 +154,15 @@ step_echo "update weops_saas environment values"
 mysql --login-path=mysql-default --database=open_paas <<EOF
 update paas_app_envvars set value="${LAN_IP}" where app_code="weops_saas" and \`name\`="BKAPP_SOURCE_IP";
 update paas_app_envvars set value="${LAN_IP}:9292" where app_code="weops_saas" and \`name\`="BKAPP_KAFKA_HOST";
+update paas_app_envvars set value="http://${LAN_IP}:4317" where app_code="weops_saas" and \`name\`="BKAPP_OTLP_ENDPOINT";
 update paas_app_envvars set value="http://${LAN_IP}:9001" where app_code="weops_saas" and \`name\`="BKAPP_CMDB_HOST";
 update paas_app_envvars set value="http://${LAN_IP}:9090" where app_code="weops_saas" and \`name\`="BKAPP_GRAYLOG_URL";
+update paas_app_envvars set value="http://${LAN_IP}:9292" where app_code="weops_saas" and \`name\`="BKAPP_LOG_OUTPUT_HOST";
 EOF
 
 step_echo "deploy saas"
-for i in monitorcenter_saas cw_uac_saas bk_itsm weops_saas;do 
+for i in bk_iam monitorcenter_saas cw_uac_saas bk_itsm weops_saas bk_sops ops-digital_saas;do 
+    info_echo "deploy ${i}"
     /data/install/bk_install saas-o ${i} 2>&1
 done
 
@@ -178,6 +181,9 @@ docker stop casbin_mesh
 rm -rvf /data/weops/casbin-mesh/*
 docker restart casbin_mesh
 
+step_echo "init weops"
+docker exec -i $(docker ps -aq -f name=weops_saas*) bash -c "export BK_FILE_PATH=/data/app/code/conf/saas_priv.txt;cd /data/app/code;python manage.py reload_casbin_policy  --delete;python manage.py init_role --update;python manage.py init_snmp_template"
+
 step_echo "init topo"
 # 清理存量拓扑记录
 mongo -u $BK_CMDB_MONGODB_USERNAME -p $BK_CMDB_MONGODB_PASSWORD mongodb://$LAN_IP:$BK_CMDB_MONGODB_PORT/cmdb --authenticationDatabase cmdb << "EOF"
@@ -192,7 +198,6 @@ EOF
 
 # 重启监控平台
 /data/install/bkcli restart bkmonitorv3
-
 
 echo ""
 echo "如果以上步骤执行没有报错, 说明WeOps一体机初始化已完成, 现在可以通过 [green]${BK_PAAS_PUBLIC_URL}[white] 进行访问"

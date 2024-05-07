@@ -4,10 +4,7 @@ set -ueo pipefail
 source /data/install/functions
 
 emphasize 停止所有容器
-docker stop $(docker ps -aq)
-
-emphasize 停止docker服务
-systemctl stop docker
+docker stop $(docker ps -aq) 1>/dev/null
 
 emphasize 停止gseagent和相关进程
 cd /usr/local/gse/agent/bin
@@ -28,5 +25,22 @@ echo kafka influxdb zk es7 redis mongodb rabbitmq mysql nginx consul | xargs -n 
 emphasize 检查第三方组件状态
 echo kafka influxdb zk es7 redis mongodb rabbitmq mysql nginx consul | xargs -n 1 ./bkcli stop
 
-emphasize 清空bkce下的日志文件
-find /data/bkce/logs -type f -delete
+_clean_file() {
+  emphasize 清空${2}下的日志文件
+  find ${1} -type f -print -delete
+}
+
+_rm_container() {
+  emphasize 删除${1}容器
+  docker rm -f $(docker ps -aq -f name=${1}*) 2>/dev/null || echo "删除${1}容器失败"
+}
+
+_clean_file /data/bkce/logs paas日志
+_clean_file /data/weops/casbin-mesh/ casbin日志
+_clean_file /data/weops/prometheus/tsdb/ "prometheus tsdb"
+_clean_file /var/log/kafka/ kafka日志
+_clean_file /var/log/zookeeper/ zk日志
+_clean_file /var/log/gse/ gse日志
+for i in bk_itsm weops_saas monitorcenter_saas cw_uac_saas bk_monitorv3 bk_nodeman bk_iam bk_user_manage ops-digital_saas bk_sops;do
+  _rm_container $i;
+done
