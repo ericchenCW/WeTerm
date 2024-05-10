@@ -1,0 +1,1 @@
+/data/install/pcmd.sh -m appt 'source /data/install/utils.fc;docker exec vault sh -c "export VAULT_ADDR=http://127.0.0.1:8200 && vault operator unseal ${VAULT_UNSEAL_CODE}" && echo "[green]解锁成功" || echo "[red]解锁失败"'

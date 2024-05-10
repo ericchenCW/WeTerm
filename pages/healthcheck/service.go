@@ -2,7 +2,9 @@ package healthcheck
 
 import (
 	"fmt"
+	"os/exec"
 	"sort"
+	"strings"
 	"weterm/pages/template/table"
 
 	capi "github.com/hashicorp/consul/api"
@@ -90,5 +92,39 @@ func (h ServiceHealth) buildColorStatus(s string) string {
 		return "[red]" + s
 	default:
 		return "[white]None"
+	}
+}
+
+func (h ServiceHealth) Restart(svc string) {
+	//去掉svc的[yellow]前缀
+	rawSvc := strings.TrimPrefix(svc, "[yellow]")
+	log.Logger.Info().Msg("Restart Service " + rawSvc)
+	args := h.getServiceFullName(rawSvc)
+	allArgs := append([]string{"restart"}, args...)
+	cmd := exec.Command("/data/install/bkcli", allArgs...)
+	_, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Logger.Error().Str("service", rawSvc).Err(err).Msg("Restart Service Error")
+	}
+	//等待运行结束
+	err = cmd.Run()
+	if err != nil {
+		log.Logger.Error().Str("service", rawSvc).Err(err).Msg("Run Restart Service Error")
+	}
+	log.Logger.Debug().Str("service", svc).Msg("Restart Service Success")
+}
+
+func (h ServiceHealth) getServiceFullName(svc string) []string {
+	//如果svc以mysql开头
+	if strings.HasPrefix(svc, "mysql") {
+		return []string{"mysql"}
+	} else if strings.HasPrefix(svc, "mongodb") {
+		return []string{"mongodb"}
+	} else if strings.HasPrefix(svc, "nodeman") {
+		return []string{"nodeman"}
+	} else if strings.HasPrefix(svc, "job-gateway") {
+		return []string{"job", "gateway"}
+	} else {
+		return strings.Split(svc, "-")
 	}
 }

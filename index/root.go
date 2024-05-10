@@ -25,18 +25,6 @@ var aioMainMenuItems = []MenuItem{
 
 // Main menu items
 var mainMenuItems = []MenuItem{
-	//{
-	//	Name: "示例",
-	//	Action: func(bs *model.AppModel) {
-	//	},
-	//	SubItems: sampleMenu,
-	//},
-	// {
-	// 	Name: "WeOps安装",
-	// 	Action: func(bs *model.AppModel) {
-	// 	},
-	// 	SubItems: installMenu,
-	// },
 	{
 		Name: "服务概览",
 		Action: func(bs *model.AppModel) {
@@ -53,72 +41,11 @@ var mainMenuItems = []MenuItem{
 		Action:   func(bs *model.AppModel) {},
 		SubItems: configMenu,
 	},
-	// {
-	// 	Name: "-- 服务状态",
-	// 	Action: func(bs *model.AppModel) {
-	// 	},
-	// 	SubItems: serviceHealthMenu,
-	// },
-	// {
-	// 	Name: "-- 主机状态",
-	// 	Action: func(bs *model.AppModel) {
-	// 	},
-	// 	//SubItems: healthMenu,
-	// },
-	// {
-	// 	Name: "-- 组件状态-未实现",
-	// 	Action: func(bs *model.AppModel) {
-	// 	},
-	// 	SubItems: componentHealthMenu,
-	// },
-	// {
-	// 	Name: "运维工具-未实现",
-	// 	Action: func(bs *model.AppModel) {
-	// 	},
-	// 	//SubItems: opsMenu,
-	// },
-	// {
-	// 	Name: "-- 服务启停-未实现",
-	// 	Action: func(bs *model.AppModel) {
-	// 	},
-	// 	SubItems: servicesOpsMenu,
-	// },
-	// {
-	// 	Name: "-- 组件操作-未实现",
-	// 	Action: func(bs *model.AppModel) {
-	// 	},
-	// 	SubItems: componentsOpsMenu,
-	// },
-	// {
-	// 	Name: "-- 备份恢复-未实现",
-	// 	Action: func(bs *model.AppModel) {
-	// 	},
-	// 	//SubItems: opsMenu,
-	// },
-	// {
-	// 	Name: "-- 组件操作-未实现",
-	// 	Action: func(bs *model.AppModel) {
-	// 	},
-	// 	//SubItems: opsMenu,
-	// },
-	// {
-	// 	Name: "-- 磁盘清理-未实现",
-	// 	Action: func(bs *model.AppModel) {
-	// 	},
-	// 	//SubItems: opsMenu,
-	// },
-	// {
-	// 	Name: "-- 接入点操作-未实现",
-	// 	Action: func(bs *model.AppModel) {
-	// 	},
-	// 	//SubItems: opsMenu,
-	// },
-	// {
-	// 	Name: "-- 数据初始化-未实现",
-	// 	Action: func(bs *model.AppModel) {
-	// 	},
-	// 	//SubItems: opsMenu,
-	// },
+	{
+		Name:     "常用操作",
+		Action:   func(bs *model.AppModel) {},
+		SubItems: componentActionMenu,
+	},
 	{
 		Name: "退出",
 		Action: func(bs *model.AppModel) {
