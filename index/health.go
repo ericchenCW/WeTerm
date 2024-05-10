@@ -73,9 +73,13 @@ var componentHealthMenu = []MenuItem{
 					return
 				}
 				serviceID := t.GetCell(row, 1).Text
+				serviceName := t.GetCell(row, 0).Text
 				output := h.Detail(serviceID)
-				modal := tview.NewModal().SetText("详情: " + output).AddButtons([]string{"OK"}).SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-					if buttonLabel == "OK" {
+				modal := tview.NewModal().SetText("详情: " + output).AddButtons([]string{"Restart", "OK"}).SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+					if buttonLabel == "Restart" {
+						h.Restart(serviceName)
+						bs.CorePages.RemovePage("modal")
+					} else if buttonLabel == "OK" {
 						bs.CorePages.RemovePage("modal")
 					}
 				})
@@ -85,101 +89,4 @@ var componentHealthMenu = []MenuItem{
 			t.BuildTable(bs, viewName, time.Duration(refreshPeriod), &check, &selectedFunction)
 		},
 	},
-	// {
-	// 	Name: "mysql-未实现",
-	// 	Action: func(bs *model.AppModel) {
-	// 		m := healthcheck.NewMysqlHealth("mysql-default.service.consul", "root", os.Getenv("BK_MYSQL_ADMIN_PASSWORD"), "mysql")
-	// 		template.ShowHealthView(bs, m)
-	// 	},
-	// },
-	// {
-	// 	Name: "redis-未实现",
-	// 	Action: func(bs *model.AppModel) {
-	// 		pages.SetUpStatusPage(bs)
-	// 		bs.CorePages.SwitchToPage("status_check")
-	// 	},
-	// },
-	// {
-	// 	Name: "mongodb-未实现",
-	// 	Action: func(bs *model.AppModel) {
-	// 		pages.SetUpStatusPage(bs)
-	// 		bs.CorePages.SwitchToPage("status_check")
-	// 	},
-	// },
-	// {
-	// 	Name: "...",
-	// 	Action: func(bs *model.AppModel) {
-	// 		pages.SetUpStatusPage(bs)
-	// 		bs.CorePages.SwitchToPage("status_check")
-	// 	},
-	// },
 }
-
-// var serviceHealthMenu = []MenuItem{
-// 	{
-// 		Name: "服务概览",
-// 		Action: func(bs *model.AppModel) {
-// 			h := healthcheck.NewConsulHealth()
-// 			viewName := "Consul概览-每10秒刷新"
-// 			refreshPeriod := 10
-// 			t := table.NewTable(viewName)
-// 			t.BuildTable(bs, viewName, time.Duration(refreshPeriod), h.Check)
-// 		},
-// 	},
-// 	{
-// 		Name: "Paas-未实现",
-// 		Action: func(bs *model.AppModel) {
-// 			pages.SetUpStatusPage(bs)
-// 			bs.CorePages.SwitchToPage("status_check")
-// 		},
-// 	},
-// 	{
-// 		Name: "用户管理-未实现",
-// 		Action: func(bs *model.AppModel) {
-// 			pages.SetUpStatusPage(bs)
-// 			bs.CorePages.SwitchToPage("status_check")
-// 		},
-// 	},
-// 	{
-// 		Name: "权限中心-未实现",
-// 		Action: func(bs *model.AppModel) {
-// 			pages.SetUpStatusPage(bs)
-// 			bs.CorePages.SwitchToPage("status_check")
-// 		},
-// 	},
-// 	{
-// 		Name: "CMDB-未实现",
-// 		Action: func(bs *model.AppModel) {
-// 			pages.SetUpStatusPage(bs)
-// 			bs.CorePages.SwitchToPage("status_check")
-// 		},
-// 	},
-// 	{
-// 		Name: "作业平台-未实现",
-// 		Action: func(bs *model.AppModel) {
-// 			pages.SetUpStatusPage(bs)
-// 			bs.CorePages.SwitchToPage("status_check")
-// 		},
-// 	},
-// 	{
-// 		Name: "监控平台-未实现",
-// 		Action: func(bs *model.AppModel) {
-// 			pages.SetUpStatusPage(bs)
-// 			bs.CorePages.SwitchToPage("status_check")
-// 		},
-// 	},
-// 	{
-// 		Name: "WeOps组件-未实现",
-// 		Action: func(bs *model.AppModel) {
-// 			pages.SetUpStatusPage(bs)
-// 			bs.CorePages.SwitchToPage("status_check")
-// 		},
-// 	},
-// 	{
-// 		Name: "...",
-// 		Action: func(bs *model.AppModel) {
-// 			pages.SetUpStatusPage(bs)
-// 			bs.CorePages.SwitchToPage("status_check")
-// 		},
-// 	},
-// }
