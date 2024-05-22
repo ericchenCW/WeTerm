@@ -124,6 +124,8 @@ func (h ServiceHealth) getServiceFullName(svc string) []string {
 		return []string{"nodeman"}
 	} else if strings.HasPrefix(svc, "job-gateway") {
 		return []string{"job", "gateway"}
+	} else if strings.HasPrefix(svc, "gse") {
+		return []string{"gse"}
 	} else {
 		return strings.Split(svc, "-")
 	}

@@ -75,11 +75,11 @@ var componentHealthMenu = []MenuItem{
 				serviceID := t.GetCell(row, 1).Text
 				serviceName := t.GetCell(row, 0).Text
 				output := h.Detail(serviceID)
-				modal := tview.NewModal().SetText("详情: " + output).AddButtons([]string{"Restart", "OK"}).SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-					if buttonLabel == "Restart" {
+				modal := tview.NewModal().SetText("详情: " + output).AddButtons([]string{"重启", "取消"}).SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+					if buttonLabel == "重启" {
 						h.Restart(serviceName)
 						bs.CorePages.RemovePage("modal")
-					} else if buttonLabel == "OK" {
+					} else if buttonLabel == "取消" {
 						bs.CorePages.RemovePage("modal")
 					}
 				})
