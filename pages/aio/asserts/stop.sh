@@ -2,6 +2,7 @@
 set -ueo pipefail
 
 source /data/install/functions
+exec 2>&1
 
 emphasize 停止所有容器
 docker stop $(docker ps -aq) 1>/dev/null
