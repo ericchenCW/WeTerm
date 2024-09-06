@@ -6,6 +6,12 @@ source /root/.bkrc
 source /data/install/functions
 source /data/install/utils.fc
 export SOURCE_LAN_IP=20.144.0.100
+exec 2>&1
+if [[ -d /data/bkee ]];then
+    BASE_PATH=/data/bkee
+else
+    BASE_PATH=/data/bkce
+fi
 
 step_echo() {
     echo -e "[green]$1[white]"
@@ -64,14 +70,34 @@ step_echo "replace zk ip"
 sed -i "s/${SOURCE_LAN_IP}/${LAN_IP}/g" /etc/zookeeper/zoo.cfg /etc/consul.d/service/zk.json
 systemctl restart zookeeper
 
-step_echo "replace redis ip"
+step_echo "replace redis default ip"
 if grep -w ${LAN_IP} /etc/redis/default.conf > /dev/null 2>&1;then
     echo "${LAN_IP} already in /etc/redis/default.conf"
 else 
     sed -i "s/bind 20.144.0.100/bind 20.144.0.100 ${LAN_IP}/g" /etc/redis/default.conf
 fi
-
 systemctl restart redis@default
+
+
+if [[ -f /etc/redis/mymaster.conf ]];then
+    step_echo "replace redis mymaster ip"
+    if grep -w ${LAN_IP} /etc/redis/mymaster.conf > /dev/null 2>&1;then
+        echo "${LAN_IP} already in /etc/redis/mymaster.conf"
+    else 
+        sed -i "s/bind 20.144.0.100/bind 20.144.0.100 ${LAN_IP}/g" /etc/redis/mymaster.conf
+    fi
+    systemctl restart redis@mymaster
+fi
+
+if [[ -f /etc/redis/sentinel-default.conf ]];then
+    step_echo "replace redis sentinel ip"
+    if grep -w ${LAN_IP} /etc/redis/sentinel-default.conf > /dev/null 2>&1;then
+        echo "${LAN_IP} already in /etc/redis/sentinel-default.conf"
+    else 
+        sed -i "s/bind 20.144.0.100/bind 20.144.0.100 ${LAN_IP}/g" /etc/redis/sentinel-default.conf
+    fi
+    systemctl restart redis-sentinel@default
+fi
 
 step_echo "replace mongodb ip"
 if grep -w ${LAN_IP} /etc/mongod.conf > /dev/null 2>&1;then
@@ -106,44 +132,36 @@ fi
 step_echo "restart nodeman"
 /data/install/bkcli render bknodeman && /data/install/bkcli restart bknodeman
 
-step_echo "update agent ip"
-jq -r ".agentip=\"${LAN_IP}\"| .identityip=\"${LAN_IP}\" | .zkhost=\"${LAN_IP}:2181\"" /usr/local/gse/agent/etc/agent.conf > /tmp/agent.conf && \
-mv -vf /tmp/agent.conf /usr/local/gse/agent/etc/agent.conf
-
-step_echo "restart agent"
-pushd /usr/local/gse/agent/bin
-./gsectl restart
-popd
-
-sed -i "s/$SOURCE_LAN_IP/$LAN_IP/" /usr/local/gse/plugins/etc/bkmonitorbeat.conf
-pushd /usr/local/gse/plugins/bin
-./restart.sh bkmonitorbeat
-popd
-
+if [[ -d /usr/local/gse/agent ]];then
+    step_echo "update agent ip"
+    jq -r ".agentip=\"${LAN_IP}\"| .identityip=\"${LAN_IP}\" | .zkhost=\"${LAN_IP}:2181\"" /usr/local/gse/agent/etc/agent.conf > /tmp/agent.conf && \
+    mv -vf /tmp/agent.conf /usr/local/gse/agent/etc/agent.conf
+    step_echo "restart agent"
+    pushd /usr/local/gse/agent/bin
+    ./gsectl restart
+    popd
+    sed -i "s/$SOURCE_LAN_IP/$LAN_IP/" /usr/local/gse/plugins/etc/bkmonitorbeat.conf
+    pushd /usr/local/gse/plugins/bin
+    ./restart.sh bkmonitorbeat
+    popd
+fi
 step_echo "replace default access point"
-pushd /data/bkce/bknodeman/nodeman
+pushd ${BASE_PATH}/bknodeman/nodeman
 source bin/environ.sh
-/data/bkce/.envs/bknodeman-nodeman/bin/python manage.py shell <<EOF
-from apps.node_man.models import AccessPoint
-target_ip = "${LAN_IP}"
-print(f"target_ip is {target_ip}")
-try:
-    de = AccessPoint.get_default_ap()
-    de.zk_hosts[0]["zk_ip"] = target_ip
-    de.btfileserver[0]["inner_ip"] = target_ip
-    de.btfileserver[0]["outer_ip"] = target_ip
-    de.dataserver[0]["inner_ip"] = target_ip
-    de.dataserver[0]["outer_ip"] = target_ip
-    de.taskserver[0]["inner_ip"] = target_ip
-    de.taskserver[0]["outer_ip"] = target_ip
-    de.package_inner_url = f"http://{target_ip}:80/download"
-    de.package_outer_url = f"http://{target_ip}:80/download"
-    de.save()
-    print(f"update_success")
-except Exception as e:
-    print(f"update fail! error message{e}")
-EOF
+mysql --login-path=mysql-default -e "
+UPDATE bk_nodeman.node_man_accesspoint 
+SET 
+    taskserver = JSON_REPLACE(taskserver, '\$[0].inner_ip', '${LAN_IP}', '\$[0].outer_ip', '${LAN_IP}'), 
+    zk_hosts = JSON_REPLACE(zk_hosts, '\$[0].zk_ip', '${LAN_IP}'),
+    package_inner_url = CONCAT('http://', '${LAN_IP}', ':80/download'),
+    package_outer_url = CONCAT('http://', '${LAN_IP}', ':80/download'),
+    btfileserver = JSON_REPLACE(btfileserver, '\$[0].inner_ip', '${LAN_IP}', '\$[0].outer_ip', '${LAN_IP}'),
+    dataserver = JSON_REPLACE(dataserver, '\$[0].inner_ip', '${LAN_IP}', '\$[0].outer_ip', '${LAN_IP}')
+WHERE 
+    id = 1;
+"
 popd
+set +x
 /data/install/bkcli restart bknodeman
 
 step_echo "restart job"
@@ -152,12 +170,14 @@ step_echo "restart job"
 
 step_echo "update weops_saas environment values"
 mysql --login-path=mysql-default --database=open_paas <<EOF
+update engine_servers set ip_address="${LAN_IP}" where ip_address="${SOURCE_LAN_IP}";
 update paas_app_envvars set value="${LAN_IP}" where app_code="weops_saas" and \`name\`="BKAPP_SOURCE_IP";
 update paas_app_envvars set value="${LAN_IP}:9292" where app_code="weops_saas" and \`name\`="BKAPP_KAFKA_HOST";
 update paas_app_envvars set value="http://${LAN_IP}:4317" where app_code="weops_saas" and \`name\`="BKAPP_OTLP_ENDPOINT";
 update paas_app_envvars set value="http://${LAN_IP}:9001" where app_code="weops_saas" and \`name\`="BKAPP_CMDB_HOST";
 update paas_app_envvars set value="http://${LAN_IP}:9090" where app_code="weops_saas" and \`name\`="BKAPP_GRAYLOG_URL";
-update paas_app_envvars set value="http://${LAN_IP}:9292" where app_code="weops_saas" and \`name\`="BKAPP_LOG_OUTPUT_HOST";
+update paas_app_envvars set value="${LAN_IP}:9292" where app_code="weops_saas" and \`name\`="BKAPP_LOG_OUTPUT_HOST";
+update paas_app_envvars set value="http://${LAN_IP}:10506" where app_code="weops_saas" and \`name\`="BKAPP_JOB_API_HREF";
 EOF
 
 step_echo "deploy saas"
@@ -192,7 +212,13 @@ db.cc_ProcessTemplate.remove({"bk_biz_id":2})
 db.cc_SetTemplate.remove({"bk_biz_id":2})
 db.cc_SetBase.remove({$and:[{"bk_set_id":{$gt:2}},{"bk_biz_id":{$eq:2}}]},{"bk_set_id":1,"bk_set_name":1,"bk_biz_id":1,"bk_biz_name":1});
 EOF
-
+/data/install/bkcli restart cmdb
+i=1
+until /data/install/bkcli check cmdb 2>&1 >/dev/null;do
+    info_echo "waiting cmdb ready $i"
+    i=$i+1
+    sleep 10
+done
 # 重新初始化拓扑
 /data/install/bkcli initdata topo
 

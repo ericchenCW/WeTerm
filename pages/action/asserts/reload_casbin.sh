@@ -1,4 +1,8 @@
-/data/install/pcmd.sh -m appo 'source /data/install/utils.fc
+source /data/install/utils.fc
+echo "[yellow]从WeOps重新同步casbin_mesh规则,执行主机${BK_APPO_IP}[white]"
+ssh $BK_APPO_IP 'source /data/install/utils.fc
+exec 2>&1
+set -euo pipefail
 echo "[yellow]停止casbin-mesh服务[white]"
 docker stop casbin_mesh && echo "[green]停止成功[white]" || echo "[red]停止失败[white]"
 echo "[yellow]清空现有wal[white]"
