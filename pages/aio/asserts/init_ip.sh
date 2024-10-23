@@ -5,7 +5,8 @@ set -eo pipefail
 source /root/.bkrc
 source /data/install/functions
 source /data/install/utils.fc
-export SOURCE_LAN_IP=20.144.0.100
+export SOURCE_LAN_IP=20.144.101.100
+export RUN_PATH=/data/weops/run
 exec 2>&1
 if [[ -d /data/bkee ]];then
     BASE_PATH=/data/bkee
@@ -19,6 +20,14 @@ step_echo() {
 
 info_echo() {
     echo -e "[blue]$1[white]"
+}
+
+compose_up() {
+    compose_path=$RUN_PATH/$1/docker-compose.yaml
+    info_echo "docker-compose -f $compose_path down"
+    docker-compose -f docker-compose.yaml down
+    info_echo "docker-compose up -d -f $compose_path"
+    docker-compose -f docker-compose.yaml up -d
 }
 
 if [[ -n "$SSH_CONNECTION" ]]; then
@@ -74,7 +83,7 @@ step_echo "replace redis default ip"
 if grep -w ${LAN_IP} /etc/redis/default.conf > /dev/null 2>&1;then
     echo "${LAN_IP} already in /etc/redis/default.conf"
 else 
-    sed -i "s/bind 20.144.0.100/bind 20.144.0.100 ${LAN_IP}/g" /etc/redis/default.conf
+    sed -i "s/bind 20.144.101.100/bind 20.144.101.100 ${LAN_IP}/g" /etc/redis/default.conf
 fi
 systemctl restart redis@default
 
@@ -84,7 +93,7 @@ if [[ -f /etc/redis/mymaster.conf ]];then
     if grep -w ${LAN_IP} /etc/redis/mymaster.conf > /dev/null 2>&1;then
         echo "${LAN_IP} already in /etc/redis/mymaster.conf"
     else 
-        sed -i "s/bind 20.144.0.100/bind 20.144.0.100 ${LAN_IP}/g" /etc/redis/mymaster.conf
+        sed -i "s/bind 20.144.101.100/bind 20.144.101.100 ${LAN_IP}/g" /etc/redis/mymaster.conf
     fi
     systemctl restart redis@mymaster
 fi
@@ -94,7 +103,7 @@ if [[ -f /etc/redis/sentinel-default.conf ]];then
     if grep -w ${LAN_IP} /etc/redis/sentinel-default.conf > /dev/null 2>&1;then
         echo "${LAN_IP} already in /etc/redis/sentinel-default.conf"
     else 
-        sed -i "s/bind 20.144.0.100/bind 20.144.0.100 ${LAN_IP}/g" /etc/redis/sentinel-default.conf
+        sed -i "s/bind 20.144.101.100/bind 20.144.101.100 ${LAN_IP}/g" /etc/redis/sentinel-default.conf
     fi
     systemctl restart redis-sentinel@default
 fi
@@ -103,7 +112,7 @@ step_echo "replace mongodb ip"
 if grep -w ${LAN_IP} /etc/mongod.conf > /dev/null 2>&1;then
     echo "${LAN_IP} already in /etc/mongod.conf"
 else 
-    sed -i "s/  bindIp: 127.0.0.1, 20.144.0.100/  bindIp: 127.0.0.1, 20.144.0.100, ${LAN_IP}/g" /etc/mongod.conf
+    sed -i "s/  bindIp: 127.0.0.1, 20.144.101.100/  bindIp: 127.0.0.1, 20.144.101.100, ${LAN_IP}/g" /etc/mongod.conf
 fi
 
 systemctl restart mongod
@@ -169,8 +178,8 @@ step_echo "restart job"
 
 
 step_echo "update weops_saas environment values"
+# update engine_servers set ip_address="${LAN_IP}" where ip_address="${SOURCE_LAN_IP}";
 mysql --login-path=mysql-default --database=open_paas <<EOF
-update engine_servers set ip_address="${LAN_IP}" where ip_address="${SOURCE_LAN_IP}";
 update paas_app_envvars set value="${LAN_IP}" where app_code="weops_saas" and \`name\`="BKAPP_SOURCE_IP";
 update paas_app_envvars set value="${LAN_IP}:9292" where app_code="weops_saas" and \`name\`="BKAPP_KAFKA_HOST";
 update paas_app_envvars set value="http://${LAN_IP}:4317" where app_code="weops_saas" and \`name\`="BKAPP_OTLP_ENDPOINT";
@@ -224,6 +233,31 @@ done
 
 # 重启监控平台
 /data/install/bkcli restart bkmonitorv3
+
+# 启动monitor组件
+compose_up monitor
+i=1
+until [ $(curl -o /dev/null -s -w "%{http_code}" http://127.0.0.1:8501/v1/kv/weops) -eq 404 ];do
+    info_echo "wait weops consul ready"
+    i=$i+1
+    sleep 10
+done
+
+curl -o /dev/null -s -X PUT http://127.0.0.1:8501/v1/kv/weops/access_points/default -d "{
+    \"ip\":\"${LAN_IP}\",
+    \"name\":\"默认区域采集节点\",
+    \"zone\":\"default\",
+    \"port\": 8089,
+    \"logip\": \"${LAN_IP}\",
+    \"logport\": 9090
+}"
+
+access_point=$(curl -sSL http://127.0.0.1:8501/v1/kv/weops/access_points/default | jq -r '.[].Value'|base64 -d)
+info_echo "access_point: $access_point"
+
+for $sys in common analysis onlyoffice automate;do
+    compose_up $sys
+done
 
 echo ""
 echo "如果以上步骤执行没有报错, 说明WeOps一体机初始化已完成, 现在可以通过 [green]${BK_PAAS_PUBLIC_URL}[white] 进行访问"

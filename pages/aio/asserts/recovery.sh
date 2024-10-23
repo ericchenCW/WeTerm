@@ -5,7 +5,7 @@ set -eo pipefail
 source /root/.bkrc
 source /data/install/functions
 source /data/install/utils.fc
-export SOURCE_LAN_IP="20.144.0.100"
+export SOURCE_LAN_IP="20.144.101.100"
 
 export LAN_IP="10.10.90.132"
 
