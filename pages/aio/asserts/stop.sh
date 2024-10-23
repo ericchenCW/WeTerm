@@ -7,11 +7,13 @@ exec 2>&1
 emphasize 停止所有容器
 docker stop $(docker ps -aq) 1>/dev/null
 
-emphasize 停止gseagent和相关进程
-cd /usr/local/gse/agent/bin
-./gsectl stop
-cd /usr/local/gse/plugins/bin
-echo bkmonitorbeat  bkunifylogbeat  exceptionbeat  gsecmdline | xargs -n 1 ./stop.sh
+if [[ -d /usr/local/gse ]];then
+  emphasize 停止gseagent和相关进程
+  cd /usr/local/gse/agent/bin
+  ./gsectl stop
+  cd /usr/local/gse/plugins/bin
+  echo bkmonitorbeat  bkunifylogbeat  exceptionbeat  gsecmdline | xargs -n 1 ./stop.sh
+fi
 
 cd /data/install
 emphasize 停止蓝鲸服务
@@ -27,6 +29,10 @@ emphasize 检查第三方组件状态
 echo kafka influxdb zk es7 redis mongodb rabbitmq mysql nginx consul | xargs -n 1 ./bkcli stop
 
 _clean_file() {
+  if [[ ! -d ${1} ]];then
+    emphasize ${1}不存在
+    return
+  fi
   emphasize 清空${2}下的日志文件
   find ${1} -type f -print -delete
 }
@@ -45,3 +51,4 @@ _clean_file /var/log/gse/ gse日志
 for i in bk_itsm weops_saas monitorcenter_saas cw_uac_saas bk_monitorv3 bk_nodeman bk_iam bk_user_manage ops-digital_saas bk_sops;do
   _rm_container $i;
 done
+emphasize 服务已停止，可以正常关机

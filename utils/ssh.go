@@ -47,7 +47,11 @@ func CopyFileBySSH(host string, src fs.File, dst string, output io.Writer, filen
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	ssh_config.Get(host, "User")
-	addr := host + ":" + ssh_config.Get(host, "Port")
+	port := ssh_config.Get(host, "Port")
+	if port == "" {
+		port = "22"
+	}
+	addr := host + ":" + port
 	log.Debug().Str("addr", addr).Msg("Start SSH Dial")
 	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
@@ -77,7 +81,11 @@ func CopyFileBySSH(host string, src fs.File, dst string, output io.Writer, filen
 
 func RunSSH(host string, script string, shell string) []byte {
 	ssh_config.Get(host, "User")
-	addr := host + ":" + ssh_config.Get(host, "Port")
+	port := ssh_config.Get(host, "Port")
+	if port == "" {
+		port = "22"
+	}
+	addr := host + ":" + port
 	privateKeyPath := os.Getenv("HOME") + "/.ssh/id_rsa"
 	privateKeyBytes, err := os.ReadFile(privateKeyPath)
 	if err != nil {
