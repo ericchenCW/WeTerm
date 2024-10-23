@@ -25,9 +25,9 @@ info_echo() {
 compose_up() {
     compose_path=$RUN_PATH/$1/docker-compose.yaml
     info_echo "docker-compose -f $compose_path down"
-    docker-compose -f docker-compose.yaml down
+    docker-compose -f $compose_path down
     info_echo "docker-compose up -d -f $compose_path"
-    docker-compose -f docker-compose.yaml up -d
+    docker-compose -f $compose_path up -d
 }
 
 if [[ -n "$SSH_CONNECTION" ]]; then
@@ -190,7 +190,7 @@ update paas_app_envvars set value="http://${LAN_IP}:10506" where app_code="weops
 EOF
 
 step_echo "deploy saas"
-for i in bk_iam monitorcenter_saas cw_uac_saas bk_itsm weops_saas bk_sops ops-digital_saas;do 
+for i in bk_iam bk_user_manage bk_nodeman bk_monitorv3 monitorcenter_saas cw_uac_saas bk_itsm weops_saas bk_sops ops-digital_saas;do 
     info_echo "deploy ${i}"
     /data/install/bk_install saas-o ${i} 2>&1
 done
@@ -202,13 +202,10 @@ step_echo "update datainsight kafka lan ip"
 sed -i "s/$SOURCE_LAN_IP:9292/$LAN_IP:9292/" /data/weops/datainsight/docker-compose.yaml
 docker-compose -f /data/weops/datainsight/docker-compose.yaml up -d
 
-step_echo "unseal vault"
-docker exec vault sh -c "export VAULT_ADDR=http://127.0.0.1:8200 && vault operator unseal ${VAULT_UNSEAL_CODE}"
-
 step_echo "reset casbin-mesh"
-docker stop casbin_mesh
+docker-compose -f /data/weops/run/common/docker-compose.yaml stop casbin_mesh
 rm -rvf /data/weops/casbin-mesh/*
-docker restart casbin_mesh
+docker-compose -f /data/weops/run/common/docker-compose.yaml start casbin_mesh
 
 step_echo "init weops"
 docker exec -i $(docker ps -aq -f name=weops_saas*) bash -c "export BK_FILE_PATH=/data/app/code/conf/saas_priv.txt;cd /data/app/code;python manage.py reload_casbin_policy  --delete;python manage.py init_role --update;python manage.py init_snmp_template"
@@ -255,9 +252,12 @@ curl -o /dev/null -s -X PUT http://127.0.0.1:8501/v1/kv/weops/access_points/defa
 access_point=$(curl -sSL http://127.0.0.1:8501/v1/kv/weops/access_points/default | jq -r '.[].Value'|base64 -d)
 info_echo "access_point: $access_point"
 
-for $sys in common analysis onlyoffice automate;do
+for sys in common analysis onlyoffice automate;do
     compose_up $sys
 done
+
+step_echo "unseal vault"
+docker exec vault sh -c "export VAULT_ADDR=http://127.0.0.1:8200 && vault operator unseal ${VAULT_UNSEAL_CODE}"
 
 echo ""
 echo "如果以上步骤执行没有报错, 说明WeOps一体机初始化已完成, 现在可以通过 [green]${BK_PAAS_PUBLIC_URL}[white] 进行访问"
