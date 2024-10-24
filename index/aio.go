@@ -14,6 +14,12 @@ var aioMenu = []MenuItem{
 		},
 	},
 	{
+		Name: "初始化蓝鲸业务拓扑",
+		Action: func(bs *model.AppModel) {
+			template.ShowShellExecutePage(bs, "初始化蓝鲸业务拓扑", aio.InitTopoScript)
+		},
+	},
+	{
 		Name: "服务器关机",
 		Action: func(bs *model.AppModel) {
 			template.ShowShellExecutePage(bs, "服务停止后关机", aio.StopScript)
