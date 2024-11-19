@@ -254,9 +254,11 @@ i=1
 until /data/install/bkcli check cmdb 2>&1 >/dev/null;do
     info_echo "waiting cmdb ready $i"
     i=$i+1
-    sleep 10
+    sleep 20
 done
-sleep 10
+info_echo "cmdb ready"
+/data/install/bkcli check cmdb
+sleep 30
 step_echo "start init topo"
 # 重新初始化拓扑
 /data/install/bkcli initdata topo
