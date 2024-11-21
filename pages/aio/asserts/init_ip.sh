@@ -249,13 +249,13 @@ db.cc_SetTemplate.remove({"bk_biz_id":2})
 db.cc_SetBase.remove({$and:[{"bk_set_id":{$gt:2}},{"bk_biz_id":{$eq:2}}]},{"bk_set_id":1,"bk_set_name":1,"bk_biz_id":1,"bk_biz_name":1});
 EOF
 step_echo "restart cmdb"
-/data/install/bkcli restart cmdb
-i=1
-until /data/install/bkcli check cmdb 2>&1 >/dev/null;do
-    info_echo "waiting cmdb ready $i"
-    i=$i+1
-    sleep 20
-done
+# /data/install/bkcli restart cmdb
+# i=1
+# until /data/install/bkcli check cmdb 2>&1 >/dev/null;do
+#     info_echo "waiting cmdb ready $i"
+#     i=$i+1
+#     sleep 20
+# done
 info_echo "cmdb ready"
 /data/install/bkcli check cmdb
 sleep 30
