@@ -33,4 +33,22 @@ var configMenu = []MenuItem{
 			template.ShowTextViewPage(bs, viewName, writer, nil)
 		},
 	},
+	{
+		Name: "启用nginx监控配置(POC用)",
+		Action: func(bs *model.AppModel) {
+			viewName := "启用nginx监控配置(POC用)"
+			writer := bytes.Buffer{}
+			config.EnableNginxStatus(&writer)
+			template.ShowTextViewPage(bs, viewName, writer, nil)
+		},
+	},
+	{
+		Name: "禁用nginx监控配置(POC用)",
+		Action: func(bs *model.AppModel) {
+			viewName := "禁用nginx监控配置(POC用)"
+			writer := bytes.Buffer{}
+			config.DisableNginxStatus(&writer)
+			template.ShowTextViewPage(bs, viewName, writer, nil)
+		},
+	},
 }

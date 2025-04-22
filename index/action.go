@@ -37,4 +37,10 @@ var componentActionMenu = []MenuItem{
 			action.SendTraceView(bs)
 		},
 	},
+	{
+		Name: "接收告警",
+		Action: func(bs *model.AppModel) {
+			action.DebugAlarmView(bs)
+		},
+	},
 }
