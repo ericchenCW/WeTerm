@@ -14,7 +14,15 @@ import (
 
 var (
 	rootCmd = &cobra.Command{
-		Use:  "WeTerm",
+		Use:   "WeTerm",
+		Short: "WeTerm - A terminal-based operations tool",
+		Long: `WeTerm is a terminal-based operations tool for managing infrastructure and services.
+
+Available actions:
+  weterm action reload_casbin  - Reload casbin mesh rules from WeOps
+  weterm action unseal_vault   - Unseal vault service
+  weterm action backup_mongodb - Backup MongoDB database
+  weterm action backup_mysql   - Backup MySQL database`,
 		RunE: run,
 	}
 	out = colorable.NewColorableStdout()
@@ -57,6 +65,7 @@ func setupLogInstance() error {
 
 func init() {
 	rootCmd.AddCommand(versionCmd())
+	rootCmd.AddCommand(actionCmd())
 }
 
 func Execute() {
