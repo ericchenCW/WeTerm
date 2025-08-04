@@ -26,6 +26,12 @@ var componentActionMenu = []MenuItem{
 		},
 	},
 	{
+		Name: "清理RabbitMQ队列",
+		Action: func(bs *model.AppModel) {
+			template.ShowShellExecutePage(bs, "清理RabbitMQ队列", action.PurgeQueue)
+		},
+	},
+	{
 		Name: "备份MySQL",
 		Action: func(bs *model.AppModel) {
 			template.ShowShellExecutePage(bs, "备份MySQL", action.BackupMysql)

@@ -18,7 +18,7 @@ func actionCmd() *cobra.Command {
 	command := &cobra.Command{
 		Use:   "action [action_name]",
 		Short: "Execute predefined actions",
-		Long:  "Execute predefined action scripts like reload_casbin, unseal_vault, backup_mongodb, backup_mysql",
+		Long:  "Execute predefined action scripts like reload_casbin, unseal_vault, backup_mongodb, backup_mysql, purge_rabbitmq",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			actionName := args[0]
@@ -70,6 +70,9 @@ func executeAction(actionName string) {
 	case "backup_mysql":
 		script = action.BackupMysql
 		scriptName = "backup_mysql.sh"
+	case "purge_rabbitmq":
+		script = action.PurgeQueue
+		scriptName = "purge_rabbitmq_queues.sh"
 	default:
 		fmt.Printf("Unknown action: %s\n", actionName)
 		fmt.Println("Available actions:")
@@ -77,6 +80,7 @@ func executeAction(actionName string) {
 		fmt.Println("  - unseal_vault: Unseal vault service")
 		fmt.Println("  - backup_mongodb: Backup MongoDB database")
 		fmt.Println("  - backup_mysql: Backup MySQL database")
+		fmt.Println("  - purge_rabbitmq: Purge RabbitMQ queues")
 		return
 	}
 
