@@ -15,3 +15,6 @@ var BackupMongodb string
 
 //go:embed asserts/backup_mysql.sh
 var BackupMysql string
+
+//go:embed asserts/purge_rabbitmq_queues.sh
+var PurgeQueue string
