@@ -14,16 +14,10 @@ import (
 
 var (
 	rootCmd = &cobra.Command{
-		Use:   "WeTerm",
-		Short: "WeTerm - A terminal-based operations tool",
-		Long: `WeTerm is a terminal-based operations tool for managing infrastructure and services.
-
-Available actions:
-  weterm action reload_casbin  - Reload casbin mesh rules from WeOps
-  weterm action unseal_vault   - Unseal vault service
-  weterm action backup_mongodb - Backup MongoDB database
-  weterm action backup_mysql   - Backup MySQL database`,
-		RunE: run,
+		Use:   "weterm",
+		Short: "weterm - A terminal-based operations tool",
+		Long:  `weterm is a terminal-based operations tool for managing infrastructure and services.`,
+		RunE:  run,
 	}
 	out = colorable.NewColorableStdout()
 )
@@ -70,6 +64,7 @@ func init() {
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
 }
