@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"weterm/pages/action"
@@ -18,9 +17,17 @@ func actionCmd() *cobra.Command {
 	command := &cobra.Command{
 		Use:   "action [action_name]",
 		Short: "Execute predefined actions",
-		Long:  "Execute predefined action scripts like reload_casbin, unseal_vault, backup_mongodb, backup_mysql, purge_rabbitmq",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Execute predefined action scripts. Run 'action' without arguments to see available actions.",
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) == 0 {
+				// 显示所有可用的动作
+				fmt.Println("Available actions:")
+				for name, info := range action.GetAllActions() {
+					fmt.Printf("  - %s: %s\n", name, info.Description)
+				}
+				return
+			}
 			actionName := args[0]
 			executeAction(actionName)
 		},
@@ -54,66 +61,43 @@ func colorizeOutput(text string) string {
 }
 
 func executeAction(actionName string) {
-	var script string
-	var scriptName string
-
-	switch actionName {
-	case "reload_casbin":
-		script = action.ReloadCasbin
-		scriptName = "reload_casbin.sh"
-	case "unseal_vault":
-		script = action.UnsealVaultScript
-		scriptName = "unseal_vault.sh"
-	case "backup_mongodb":
-		script = action.BackupMongodb
-		scriptName = "backup_mongodb.sh"
-	case "backup_mysql":
-		script = action.BackupMysql
-		scriptName = "backup_mysql.sh"
-	case "purge_rabbitmq":
-		script = action.PurgeQueue
-		scriptName = "purge_rabbitmq_queues.sh"
-	default:
+	// 获取动作信息
+	actionInfo, exists := action.GetAction(actionName)
+	if !exists {
 		fmt.Printf("Unknown action: %s\n", actionName)
 		fmt.Println("Available actions:")
-		fmt.Println("  - reload_casbin: Reload casbin mesh rules from WeOps")
-		fmt.Println("  - unseal_vault: Unseal vault service")
-		fmt.Println("  - backup_mongodb: Backup MongoDB database")
-		fmt.Println("  - backup_mysql: Backup MySQL database")
-		fmt.Println("  - purge_rabbitmq: Purge RabbitMQ queues")
+
+		// 动态显示所有可用的动作
+		for name, info := range action.GetAllActions() {
+			fmt.Printf("  - %s: %s\n", name, info.Description)
+		}
 		return
 	}
-
-	// Create temporary script file
-	tmpDir := os.TempDir()
-	tmpFile := filepath.Join(tmpDir, scriptName)
-
-	err := os.WriteFile(tmpFile, []byte(script), 0755)
-	if err != nil {
-		fmt.Printf("Error creating temporary script file: %v\n", err)
-		return
-	}
-	defer os.Remove(tmpFile)
 
 	fmt.Printf("Executing action: %s\n", actionName)
 	fmt.Println(strings.Repeat("-", 50))
 
-	// Execute the script with custom output handling
-	cmd := exec.Command("bash", tmpFile)
+	// 直接通过管道执行脚本，不需要创建临时文件
+	cmd := exec.Command("bash")
 
-	// Create pipes for stdout and stderr
+	// Create pipes for stdin, stdout and stderr
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		fmt.Printf("Error creating stdin pipe: %v\n", err)
+		return
+	}
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		fmt.Printf("Error creating stdout pipe: %v\n", err)
 		return
 	}
+
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		fmt.Printf("Error creating stderr pipe: %v\n", err)
 		return
 	}
-
-	cmd.Stdin = os.Stdin
 
 	// Start the command
 	err = cmd.Start()
@@ -121,6 +105,12 @@ func executeAction(actionName string) {
 		fmt.Printf("Error starting script: %v\n", err)
 		return
 	}
+
+	// Write script content to stdin and close it
+	go func() {
+		defer stdin.Close()
+		stdin.Write([]byte(actionInfo.Script))
+	}()
 
 	// Handle stdout with color processing
 	go func() {
