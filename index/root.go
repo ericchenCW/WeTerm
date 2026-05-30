@@ -38,6 +38,12 @@ var mainMenuItems = []MenuItem{
 		SubItems: inspectMenu,
 	},
 	{
+		Name: "进程监控",
+		Action: func(bs *model.AppModel) {
+		},
+		SubItems: procmonMenu,
+	},
+	{
 		Name:     "信息收集",
 		Action:   func(am *model.AppModel) {},
 		SubItems: collectMenu,
