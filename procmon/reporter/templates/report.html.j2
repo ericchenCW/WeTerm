@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>procmon 资源占用报告 — {{ window.start }} ~ {{ window.end }}</title>
+<style>
+  :root {
+    --bg: #f7fafc;
+    --panel: #ffffff;
+    --border: #e2e8f0;
+    --border-strong: #cbd5e0;
+    --text: #1a202c;
+    --text-soft: #4a5568;
+    --warn: #c53030;
+    --up: #c05621;
+    --down: #2f855a;
+    --ok: #2f855a;
+    --table-head: #edf2f7;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+                 "PingFang SC", "Microsoft YaHei", sans-serif;
+    margin: 0; padding: 24px; color: var(--text); background: var(--bg);
+  }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  h2 {
+    font-size: 18px;
+    margin: 32px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--border-strong);
+  }
+  h3 { font-size: 14px; margin: 18px 0 6px; color: #2d3748; }
+  .meta { color: var(--text-soft); font-size: 12px; margin-bottom: 16px; }
+
+  /* ─── Host tabs ──────────────────────────────────────────────────── */
+  /* Each host becomes a tab; only the active host's panel is shown. The
+     bar sticks to the top so you can switch hosts while scrolled down. */
+  .host-tabs {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg);
+    padding: 12px 0 8px;
+    margin-bottom: 8px;
+    border-bottom: 2px solid var(--border-strong);
+  }
+  .host-tab {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 14px;
+    background: var(--panel);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    font-size: 12px; font-family: inherit; color: var(--text-soft);
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  }
+  .host-tab:hover { border-color: #a0aec0; color: var(--text); }
+  .host-tab .name { font-weight: 600; }
+  .host-tab .spec { color: #a0aec0; font-weight: 400; }
+  .host-tab.active {
+    background: var(--text);
+    border-color: var(--text);
+    color: #fff;
+  }
+  .host-tab.active .spec { color: #cbd5e0; }
+  /* Peak-memory status dot — red when a host crossed the warn threshold. */
+  .host-tab .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ok); flex: none;
+  }
+  .host-tab .dot.warn { background: var(--warn); }
+  .host-tab.active .dot.warn { background: #fc8181; }
+
+  /* Only the active host's panel renders; the rest stay collapsed. */
+  .host-panel { display: none; }
+  .host-panel.active { display: block; }
+  .host-panel > h2:first-child { margin-top: 12px; }
+  .host-panel h2 .ip {
+    font-size: 13px; font-weight: 500; color: var(--text-soft);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  /* ─── Role-distribution overview ─────────────────────────────────── */
+  .overview-title { margin-top: 8px; }
+  table.t-roles { table-layout: fixed; margin-bottom: 6px; }
+  table.t-roles col.c-seq  { width: 52px; }
+  table.t-roles col.c-ip   { width: 104px; }
+  table.t-roles col.c-roles{ width: auto; }
+  table.t-roles col.c-spec { width: 64px; }
+  table.t-roles thead th {
+    background: #4f7cf6; color: #fff; font-weight: 600;
+    border-bottom: none; border-right: 1px solid rgba(255,255,255,0.22);
+    padding: 9px 10px;
+  }
+  table.t-roles thead th:last-child { border-right: none; }
+  table.t-roles td { border-right: 1px solid var(--border); }
+  table.t-roles td:last-child { border-right: none; }
+  table.t-roles tbody tr:nth-child(even) { background: #eef2fb; }
+  table.t-roles tbody tr:hover { background: #e4eafc; }
+  table.t-roles td.roles { word-break: break-word; line-height: 1.55; }
+  table.t-roles tr.total td { font-weight: 600; background: #f1f5f9; }
+  /* totals: cpu / 内存 / 磁盘 columns in red, matching the source slide */
+  table.t-roles tr.total td:nth-child(n+4) { color: var(--warn); }
+  .overview-note {
+    margin: 2px 0 30px; font-size: 13px; color: var(--text); font-weight: 500;
+  }
+  .overview-note::before { content: "★ "; color: #4f7cf6; }
+
+  /* ─── Target-architecture assessment ─────────────────────────────── */
+  .plan-verdict {
+    background: #fff8f1; border-left: 4px solid var(--up);
+    padding: 12px 14px; border-radius: 0 6px 6px 0;
+    font-size: 13px; line-height: 1.75; margin: 8px 0 16px;
+  }
+  .plan-totals { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .tot-card {
+    background: var(--panel); border: 1px solid var(--border-strong);
+    border-radius: 6px; padding: 8px 14px; font-size: 12px; color: var(--text-soft);
+  }
+  .tot-card b { color: var(--text); font-size: 14px; }
+  .tot-card .arr { color: #a0aec0; }
+  table.t-plan { table-layout: fixed; margin-bottom: 8px; }
+  table.t-plan col.c-seq   { width: 64px; }
+  table.t-plan col.c-spec  { width: 124px; }
+  table.t-plan col.c-roles { width: auto; }
+  table.t-plan col.c-demand{ width: 270px; }
+  table.t-plan col.c-verd  { width: 132px; }
+  table.t-plan td.roles, table.t-plan td.demand { word-break: break-word; line-height: 1.5; }
+  /* Risk level → colored left edge on the row + colored verdict text. */
+  table.t-plan tbody td:first-child { border-left: 4px solid var(--border-strong); }
+  table.t-plan tr.lvl-bad  td:first-child { border-left-color: var(--warn); }
+  table.t-plan tr.lvl-warn td:first-child { border-left-color: var(--up); }
+  table.t-plan tr.lvl-over td:first-child { border-left-color: #3182ce; }
+  table.t-plan tr.lvl-ok   td:first-child { border-left-color: var(--ok); }
+  table.t-plan td.verdict { font-weight: 600; }
+  table.t-plan tr.lvl-bad  td.verdict { color: var(--warn); }
+  table.t-plan tr.lvl-warn td.verdict { color: var(--up); }
+  table.t-plan tr.lvl-over td.verdict { color: #3182ce; }
+  table.t-plan tr.lvl-ok   td.verdict { color: var(--ok); }
+  .plan-cpu-note {
+    font-size: 12px; color: var(--text-soft);
+    background: #f0fff4; border-left: 4px solid var(--ok);
+    padding: 8px 12px; border-radius: 0 6px 6px 0; margin-bottom: 18px; line-height: 1.6;
+  }
+  .plan-issue {
+    margin: 8px 0; padding: 10px 14px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 6px;
+  }
+  .pi-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .pi-body { font-size: 12px; color: var(--text-soft); line-height: 1.65; }
+  ul.plan-notes { font-size: 12px; color: var(--text-soft); line-height: 1.75; padding-left: 20px; }
+
+  /* Recommended config — green header marks it as the prescription. */
+  .rec-intro { font-size: 13px; line-height: 1.7; margin: 6px 0 12px; color: var(--text); }
+  table.t-rec { table-layout: fixed; margin-bottom: 8px; }
+  table.t-rec col.c-seq   { width: 44px; }
+  table.t-rec col.c-ip    { width: 86px; }
+  table.t-rec col.c-roles { width: auto; }
+  table.t-rec col.c-num   { width: 58px; }
+  table.t-rec td.roles { word-break: break-word; line-height: 1.5; }
+  table.t-rec thead th {
+    background: var(--ok); color: #fff; font-weight: 600;
+    border-bottom: none; border-right: 1px solid rgba(255,255,255,0.22); padding: 7px 8px;
+  }
+  table.t-rec thead th.sub { background: #38a169; font-weight: 500; font-size: 11px; padding: 4px 8px; }
+  table.t-rec thead th:last-child { border-right: none; }
+  table.t-rec td { border-right: 1px solid var(--border); text-align: center; }
+  table.t-rec td.roles { text-align: left; }
+  table.t-rec td:last-child { border-right: none; }
+  /* 方案列灰、建议列绿加粗 —— 数值不同处一眼可辨 */
+  table.t-rec td.before { color: var(--text-soft); }
+  table.t-rec td.after  { color: var(--ok); font-weight: 600; }
+  table.t-rec tr.rec-total td { font-weight: 600; background: #f0fff4; }
+
+  /* ─── Tables ─────────────────────────────────────────────────────── */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    background: var(--panel);
+    font-size: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    table-layout: fixed;  /* makes col widths deterministic */
+  }
+  /* Column widths — narrow rank, generous Process, equal numeric columns. */
+  table.t-mem    col.c-rank,
+  table.t-cpu    col.c-rank,
+  table.t-io     col.c-rank        { width: 38px; }
+  table.t-mem    col.c-process,
+  table.t-cpu    col.c-process,
+  table.t-io     col.c-process     { width: auto; }
+  table.t-mem    col.c-num         { width: 90px; }
+  table.t-cpu    col.c-num         { width: 80px; }
+  table.t-io     col.c-num         { width: 110px; }
+
+  thead th {
+    background: var(--table-head);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 10px;
+  }
+  tbody td {
+    border-bottom: 1px solid var(--border);
+    padding: 6px 10px;
+    vertical-align: middle;
+  }
+  /* Numeric columns: right-aligned in BOTH thead and tbody so headers
+     line up with the values directly under them. Text columns: left. */
+  th.r, td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  th.l, td.l { text-align: left; }
+  td.key {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    word-break: break-all;
+  }
+  td.up    { color: var(--up);   font-weight: 600; }
+  td.down  { color: var(--down); font-weight: 600; }
+  td.warn  { color: var(--warn); font-weight: 600; }
+  tbody tr:hover { background: #fafbfc; }
+
+  /* ─── Charts ─────────────────────────────────────────────────────── */
+  .chart-block {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 8px 4px;
+    margin-top: 8px;
+    margin-bottom: 16px;
+  }
+
+  /* ─── Appendix ───────────────────────────────────────────────────── */
+  details.appendix {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-strong);
+  }
+  details.appendix > summary {
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    padding: 4px 0;
+    list-style: none;
+  }
+  details.appendix > summary::before {
+    content: "▶ ";
+    display: inline-block;
+    transition: transform 0.15s ease;
+    color: var(--text-soft);
+    margin-right: 4px;
+  }
+  details.appendix[open] > summary::before { transform: rotate(90deg); }
+  details.appendix .appendix-body { margin-top: 12px; font-size: 11px; color: var(--text-soft); }
+  details.appendix table { font-size: 11px; }
+</style>
+
+{{ plotly_runtime | safe }}
+</head>
+<body>
+
+<h1>资源占用周报</h1>
+<div class="meta">
+  报告期: <strong>{{ window.start }} ~ {{ window.end }}</strong>
+  &nbsp;·&nbsp; 采集粒度: {{ window.sample_interval_s }}s
+  &nbsp;·&nbsp; 数据点合计: {{ window.total_samples }}
+  &nbsp;·&nbsp; 主机: {{ hosts | length }}
+  &nbsp;·&nbsp; 生成时间: {{ window.generated_at }}
+</div>
+
+{% if roles_overview %}
+<h2 class="overview-title">当前角色分布</h2>
+<table class="t-roles">
+  <colgroup>
+    <col class="c-seq"><col class="c-ip"><col class="c-roles">
+    <col class="c-spec"><col class="c-spec"><col class="c-spec">
+  </colgroup>
+  <thead><tr>
+    <th class="c">序号</th><th class="c">IP</th><th class="l">角色</th>
+    <th class="c">cpu</th><th class="c">内存</th><th class="c">磁盘</th>
+  </tr></thead>
+  <tbody>
+  {% for r in roles_overview.rows %}
+    <tr>
+      <td class="c">{{ loop.index }}</td>
+      <td class="c key">{{ r.ip }}</td>
+      <td class="l roles">{{ r.roles }}</td>
+      <td class="c">{{ r.cores }}</td>
+      <td class="c">{{ r.mem_gb }}</td>
+      <td class="c">{{ r.disk_gb }}</td>
+    </tr>
+  {% endfor %}
+    <tr class="total">
+      <td></td><td></td><td class="c">合计</td>
+      <td class="c">{{ roles_overview.total.cores }}</td>
+      <td class="c">{{ roles_overview.total.mem_gb }}</td>
+      <td class="c">{{ roles_overview.total.disk_gb }}</td>
+    </tr>
+  </tbody>
+</table>
+{% if overview_note %}<div class="overview-note">{{ overview_note }}</div>{% endif %}
+{% endif %}
+
+{% if plan %}
+<h2 class="overview-title">{{ plan.title }}</h2>
+<div class="plan-verdict">{{ plan.verdict }}</div>
+
+{% set b = plan.totals.before %}{% set a = plan.totals.after %}
+<div class="plan-totals">
+  <div class="tot-card">机器 <b>{{ b.machines }}</b> <span class="arr">→</span> <b>{{ a.machines }}</b></div>
+  <div class="tot-card">CPU <b>{{ b.cores }}C</b> <span class="arr">→</span> <b>{{ a.cores }}C</b></div>
+  <div class="tot-card">内存 <b>{{ b.mem_gb }}G</b> <span class="arr">→</span> <b>{{ a.mem_gb }}G</b></div>
+  <div class="tot-card">磁盘 <b>{{ b.disk_gb }}G</b> <span class="arr">→</span> <b>{{ a.disk_gb }}G</b></div>
+</div>
+
+<table class="t-plan">
+  <colgroup>
+    <col class="c-seq"><col class="c-roles"><col class="c-spec">
+    <col class="c-demand"><col class="c-verd">
+  </colgroup>
+  <thead><tr>
+    <th class="c">机器</th><th class="l">角色</th><th class="c">规格</th>
+    <th class="l">实测内存需求</th><th class="l">判定</th>
+  </tr></thead>
+  <tbody>
+  {% for r in plan.rows %}
+    <tr class="lvl-{{ r.level }}">
+      <td class="c">{{ r.seq }}</td>
+      <td class="l roles">{{ r.roles }}</td>
+      <td class="c key">{{ r.spec }}</td>
+      <td class="l demand">{{ r.demand }}</td>
+      <td class="l verdict">{{ r.verdict }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if plan.cpu_note %}<div class="plan-cpu-note">{{ plan.cpu_note }}</div>{% endif %}
+
+{% if plan.issues %}
+<h3>必须修的问题</h3>
+{% for i in plan.issues %}
+<div class="plan-issue">
+  <div class="pi-title">{{ i.title }}</div>
+  <div class="pi-body">{{ i.body }}</div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if plan.notes %}
+<h3>还需确认</h3>
+<ul class="plan-notes">{% for n in plan.notes %}<li>{{ n }}</li>{% endfor %}</ul>
+{% endif %}
+
+{% if plan.recommendation %}
+{% set rec = plan.recommendation %}
+<h3>{{ rec.title }}</h3>
+{% if rec.intro %}<div class="rec-intro">{{ rec.intro }}</div>{% endif %}
+<table class="t-rec">
+  <colgroup>
+    <col class="c-seq"><col class="c-ip"><col class="c-roles">
+    <col class="c-num"><col class="c-num"><col class="c-num">
+    <col class="c-num"><col class="c-num"><col class="c-num">
+  </colgroup>
+  <thead>
+    <tr>
+      <th class="c" rowspan="2">序号</th>
+      <th class="c" rowspan="2">IP</th>
+      <th class="l" rowspan="2">角色</th>
+      <th class="c" colspan="2">CPU</th>
+      <th class="c" colspan="2">内存 (GB)</th>
+      <th class="c" colspan="2">磁盘 (GB)</th>
+    </tr>
+    <tr>
+      <th class="c sub">方案</th><th class="c sub">建议</th>
+      <th class="c sub">方案</th><th class="c sub">建议</th>
+      <th class="c sub">方案</th><th class="c sub">建议</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in rec.rows %}
+    <tr>
+      <td class="c">{{ r.seq }}</td>
+      <td class="c key">{{ r.ip }}</td>
+      <td class="l roles">{{ r.roles }}</td>
+      <td class="before">{{ r.plan_cpu }}</td><td class="after">{{ r.rec_cpu }}</td>
+      <td class="before">{{ r.plan_mem }}</td><td class="after">{{ r.rec_mem }}</td>
+      <td class="before">{{ r.plan_disk }}</td><td class="after">{{ r.rec_disk }}</td>
+    </tr>
+  {% endfor %}
+    <tr class="rec-total">
+      <td class="c" colspan="3">合计</td>
+      <td class="before">{{ rec.total.plan_cpu }}</td><td class="after">{{ rec.total.rec_cpu }}</td>
+      <td class="before">{{ rec.total.plan_mem }}</td><td class="after">{{ rec.total.rec_mem }}</td>
+      <td class="before">{{ rec.total.plan_disk }}</td><td class="after">{{ rec.total.rec_disk }}</td>
+    </tr>
+  </tbody>
+</table>
+{% if rec.notes %}<ul class="plan-notes">{% for n in rec.notes %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
+{% endif %}
+{% endif %}
+
+<nav class="host-tabs" role="tablist">
+  {% for h in hosts %}
+  <button class="host-tab{% if loop.first %} active{% endif %}"
+          role="tab" data-target="host-panel-{{ loop.index0 }}">
+    {% if h.peak_mem_pct is not none %}
+    <span class="dot {% if h.peak_mem_pct >= 85 %}warn{% endif %}"
+          title="内存峰值 {{ '%.0f'|format(h.peak_mem_pct) }}%"></span>
+    {% endif %}
+    <span class="name">{{ h.name }}</span>
+    {% if h.mem_total_gb %}<span class="spec">{% if h.cores %}{{ h.cores }}C/{% endif %}{{ "%.0f"|format(h.mem_total_gb) }}G</span>{% endif %}
+  </button>
+  {% endfor %}
+</nav>
+
+{% for h in hosts %}
+<section class="host-panel{% if loop.first %} active{% endif %}" id="host-panel-{{ loop.index0 }}" role="tabpanel">
+<h2>{{ h.name }}{% if h.ip %} <span class="ip">{{ h.ip }}</span>{% endif %}{% if h.cores %} ({{ h.cores }}C / {{ "%.0f"|format(h.mem_total_gb) }}G){% elif h.mem_total_gb %} ({{ "%.0f"|format(h.mem_total_gb) }}G){% endif %}
+  {% if h.peak_mem_pct is not none %}
+  <span style="font-size:13px;font-weight:400;color:var(--text-soft);"
+        title="峰值 = 报告期内各进程 RSS 之和的最高值 ÷ 总内存；RSS 含共享页重复计数，会偏高">
+    · 内存峰值 <span style="color:{% if h.peak_mem_pct >= 85 %}var(--warn){% else %}var(--ok){% endif %};font-weight:600;">{{ "%.0f"|format(h.peak_mem_pct) }}%</span>{% if not h.mem_is_real %} <span style="color:#a0aec0;">(估算)</span>{% endif %}
+  </span>
+  {% endif %}
+</h2>
+
+<h3>内存 Top 10 (按峰值 RSS 排序)</h3>
+<table class="t-mem">
+  <colgroup>
+    <col class="c-rank"><col class="c-process">
+    <col class="c-num"><col class="c-num"><col class="c-num"><col class="c-num">
+  </colgroup>
+  <thead><tr>
+    <th class="r">#</th><th class="l">Process</th>
+    <th class="r">avg</th><th class="r">p95</th><th class="r">peak</th><th class="r">trend</th>
+  </tr></thead>
+  <tbody>
+  {% for row in h.mem_top %}
+    <tr>
+      <td class="r">{{ loop.index }}</td>
+      <td class="key l">{{ row.key }}</td>
+      <td class="r">{{ row.avg }}</td>
+      <td class="r">{{ row.p95 }}</td>
+      <td class="r">{{ row.peak }}</td>
+      <td class="r {{ row.trend_class }}">{{ row.trend }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<div class="chart-block">{{ h.charts.memory | safe }}</div>
+
+<h3>CPU Top 10 (按平均 CPU% 排序; 100% = 1 核满载)</h3>
+<table class="t-cpu">
+  <colgroup>
+    <col class="c-rank"><col class="c-process">
+    <col class="c-num"><col class="c-num"><col class="c-num">
+  </colgroup>
+  <thead><tr>
+    <th class="r">#</th><th class="l">Process</th>
+    <th class="r">avg</th><th class="r">p95</th><th class="r">peak</th>
+  </tr></thead>
+  <tbody>
+  {% for row in h.cpu_top %}
+    <tr>
+      <td class="r">{{ loop.index }}</td>
+      <td class="key l">{{ row.key }}</td>
+      <td class="r">{{ row.avg }}</td>
+      <td class="r">{{ row.p95 }}</td>
+      <td class="r">{{ row.peak }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<div class="chart-block">{{ h.charts.cpu | safe }}</div>
+
+<h3>磁盘 IO Top 10 (按 read+write 总量排序)</h3>
+<table class="t-io">
+  <colgroup>
+    <col class="c-rank"><col class="c-process">
+    <col class="c-num"><col class="c-num"><col class="c-num">
+  </colgroup>
+  <thead><tr>
+    <th class="r">#</th><th class="l">Process</th>
+    <th class="r">total</th><th class="r">avg rate</th><th class="r">peak rate</th>
+  </tr></thead>
+  <tbody>
+  {% for row in h.io_top %}
+    <tr>
+      <td class="r">{{ loop.index }}</td>
+      <td class="key l">{{ row.key }}</td>
+      <td class="r">{{ row.total }}</td>
+      <td class="r">{{ row.avg_rate }}</td>
+      <td class="r">{{ row.peak_rate }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<div class="chart-block">{{ h.charts.io | safe }}</div>
+</section>
+{% endfor %}
+
+<details class="appendix">
+  <summary>附录: cmdline_key 归一化映射 ({{ key_map | length }} 条)</summary>
+  <div class="appendix-body">
+    评审时若发现某 key 把不该合并的进程聚到一起，可对照下表反向定位；
+    需要进一步区分时，在进程命令行加 <code>--name &lt;X&gt;</code> 参数即可被自动归一化。
+    <table style="margin-top: 8px;">
+      <thead><tr>
+        <th class="l">comm</th><th class="l">cmdline (脱敏)</th>
+        <th class="l">cwd</th><th class="l">container</th><th class="l">cmdline_key</th>
+      </tr></thead>
+      <tbody>
+      {% for row in key_map %}
+        <tr>
+          <td class="l">{{ row.comm }}</td>
+          <td class="key l">{{ row.cmdline }}</td>
+          <td class="key l">{{ row.cwd }}</td>
+          <td class="key l">{{ row.container }}</td>
+          <td class="key l">{{ row.key }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</details>
+
+<script>
+// Host tab switching. Panels are display:none until selected. Plotly charts
+// rendered inside a hidden panel compute zero width, so after revealing a
+// panel we force every chart in it to resize to its now-laid-out container.
+(function () {
+  var tabs = document.querySelectorAll(".host-tab");
+  var panels = document.querySelectorAll(".host-panel");
+  function activate(tab) {
+    var target = document.getElementById(tab.dataset.target);
+    if (!target) return;
+    tabs.forEach(function (t) { t.classList.remove("active"); });
+    panels.forEach(function (p) { p.classList.remove("active"); });
+    tab.classList.add("active");
+    target.classList.add("active");
+    if (window.Plotly) {
+      target.querySelectorAll(".plotly-graph-div").forEach(function (d) {
+        window.Plotly.Plots.resize(d);
+      });
+    }
+  }
+  tabs.forEach(function (tab) {
+    tab.addEventListener("click", function () { activate(tab); });
+  });
+}());
+</script>
+
+</body>
+</html>
