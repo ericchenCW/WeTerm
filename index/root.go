@@ -32,6 +32,12 @@ var mainMenuItems = []MenuItem{
 		SubItems: componentHealthMenu,
 	},
 	{
+		Name: "平台巡检",
+		Action: func(bs *model.AppModel) {
+		},
+		SubItems: inspectMenu,
+	},
+	{
 		Name:     "信息收集",
 		Action:   func(am *model.AppModel) {},
 		SubItems: collectMenu,

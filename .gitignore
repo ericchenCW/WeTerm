@@ -6,3 +6,18 @@ weterm.log
 bin/
 .vscode/
 .env
+
+# go workspace
+go.work.sum
+
+# procmon 本地构建产物（嵌入用的 pages/procmon/assets/procmon-linux-amd64 需纳入版本控制，不忽略）
+procmon/cmd/procmon/procmon
+procmon/cmd/procmon/procmon-linux-amd64
+
+# 采集/报告数据产物（只搬源码，产物不进仓）
+*.jsonl
+*.pyc
+__pycache__/
+.pytest_cache/
+procmon/reporter/data/
+report.html

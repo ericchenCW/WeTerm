@@ -7,16 +7,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
-	"weops-inspect/checker"
-	"weops-inspect/collector"
 	"weops-inspect/config"
 	"weops-inspect/lock"
-	"weops-inspect/model"
 	"weops-inspect/notify"
 	"weops-inspect/output"
-	sshclient "weops-inspect/ssh"
+	"weops-inspect/runner"
 )
 
 var version = "dev"
@@ -61,81 +57,13 @@ func main() {
 		}
 	}
 
-	report := &model.InspectReport{
-		Timestamp: time.Now().Format("2006-01-02 15:04:05"),
-		Services:  make(map[string][]model.ServiceStatus),
-	}
-
-	// Initialize SSH client
-	sshClient, err := sshclient.New(cfg.SSHUser, cfg.SSHPort, cfg.SSHKeyPath, cfg.SSHUseSudo,
-		30*time.Second, 60*time.Second)
+	// 三阶段采集 + 规则判定 + 汇总（进度打到 stderr，与原行为一致）。
+	progress := func(s string) { fmt.Fprintln(os.Stderr, s) }
+	report, err := runner.Run(context.Background(), cfg, progress)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SSH 客户端初始化失败: %v\n", err)
+		fmt.Fprintf(os.Stderr, "巡检失败: %v\n", err)
 		os.Exit(1)
 	}
-
-	// Phase 1: Collect host metrics
-	fmt.Fprintf(os.Stderr, "[1/3] 采集主机指标 (%d 台主机)...\n", len(cfg.AllHosts))
-	hostMetrics := collector.CollectAllHosts(sshClient, cfg.AllHosts, cfg.CheckMountPath, cfg.DiskIncludeNFS)
-
-	// Apply rules and build host check results
-	var allChecks []model.CheckResult
-	for _, hm := range hostMetrics {
-		checks := checker.CheckHost(hm, cfg.Thresholds)
-		allChecks = append(allChecks, checks...)
-		report.Hosts = append(report.Hosts, model.HostCheckResult{
-			Metrics: hm,
-			Checks:  checks,
-		})
-	}
-
-	// Phase 2: Collect service status
-	fmt.Fprintf(os.Stderr, "[2/3] 采集蓝鲸模块状态...\n")
-	serviceResults := collector.CollectAllServices(sshClient, cfg)
-	report.Services = serviceResults
-
-	// Check service status rules. Iterate by index so that backfilled
-	// RenderStatus / HealthzRenderStatus / ExitedRenderStatus persist for
-	// template rendering.
-	for moduleKey, statuses := range serviceResults {
-		for i := range statuses {
-			s := &statuses[i]
-			allChecks = append(allChecks, checker.CheckServiceCollectError(s)...)
-			for j := range s.Services {
-				allChecks = append(allChecks, checker.CheckService(&s.Services[j], s.HostIP, moduleKey)...)
-			}
-			allChecks = append(allChecks, checker.CheckServiceContainers(s, cfg.Thresholds)...)
-		}
-	}
-
-	// Phase 3: Collect open source components
-	fmt.Fprintf(os.Stderr, "[3/3] 采集开源组件状态...\n")
-	ctx := context.Background()
-	report.ES = collector.CollectES(ctx, cfg)
-	report.MySQL = collector.CollectMySQL(ctx, cfg)
-	report.RedisStandalone = collector.CollectRedisStandalone(ctx, cfg)
-	report.RedisSentinel = collector.CollectRedisSentinel(ctx, cfg)
-	collector.CrossCheckSentinelMaster(report.RedisSentinel, cfg.RedisMasterIPs)
-	report.MongoDB = collector.CollectMongo(ctx, cfg)
-	report.RabbitMQ = collector.CollectRabbitMQ(ctx, cfg)
-	report.Replication = collector.CollectReplication(ctx, cfg)
-	if deps := collector.CollectBKMonitorV3Deps(cfg); deps != nil {
-		report.BKMonitorV3 = &model.BKMonitorV3Section{Dependencies: deps}
-	}
-
-	// Component-level checks (each Check* mutates the report struct in place to
-	// backfill render statuses, then returns CheckResults for Summary/notify).
-	allChecks = append(allChecks, checker.CheckES(report.ES, cfg.Thresholds)...)
-	allChecks = append(allChecks, checker.CheckRedis(report.RedisStandalone, cfg.Thresholds)...)
-	allChecks = append(allChecks, checker.CheckRedisSentinel(report.RedisSentinel)...)
-	allChecks = append(allChecks, checker.CheckMongo(report.MongoDB)...)
-	allChecks = append(allChecks, checker.CheckRabbitMQ(report.RabbitMQ, cfg.Thresholds)...)
-	allChecks = append(allChecks, checker.CheckBKDeps(report.BKMonitorV3)...)
-	allChecks = append(allChecks, checker.CheckReplication(report.Replication, cfg.Thresholds)...)
-
-	// Summary
-	report.Summary = checker.Summarize(allChecks)
-	report.AllChecks = allChecks
 
 	// Optional notify config: when enabled, persistence confirmation runs
 	// BEFORE rendering so the on-disk HTML/JSON match what we notify on.
