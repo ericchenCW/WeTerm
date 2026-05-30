@@ -116,3 +116,45 @@ func Run(ctx context.Context, cfg *config.Config, progress func(string)) (*model
 
 	return report, nil
 }
+
+// RunHostsOnly 只执行 Phase 1（主机指标采集 + 主机规则判定），用于「服务概览」
+// 轻量速查——不探测蓝鲸模块与开源组件，避免网络探测带来的耗时。
+func RunHostsOnly(ctx context.Context, cfg *config.Config, progress func(string)) (*model.InspectReport, error) {
+	emit := func(format string, args ...interface{}) {
+		if progress != nil {
+			progress(fmt.Sprintf(format, args...))
+		}
+	}
+
+	report := &model.InspectReport{
+		Timestamp: time.Now().Format("2006-01-02 15:04:05"),
+		Services:  make(map[string][]model.ServiceStatus),
+	}
+
+	sshClient, err := sshclient.New(cfg.SSHUser, cfg.SSHPort, cfg.SSHKeyPath, cfg.SSHUseSudo,
+		30*time.Second, 60*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("SSH 客户端初始化失败: %w", err)
+	}
+
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	emit("采集主机指标 (%d 台主机)...", len(cfg.AllHosts))
+	hostMetrics := collector.CollectAllHosts(sshClient, cfg.AllHosts, cfg.CheckMountPath, cfg.DiskIncludeNFS)
+
+	var allChecks []model.CheckResult
+	for _, hm := range hostMetrics {
+		checks := checker.CheckHost(hm, cfg.Thresholds)
+		allChecks = append(allChecks, checks...)
+		report.Hosts = append(report.Hosts, model.HostCheckResult{
+			Metrics: hm,
+			Checks:  checks,
+		})
+	}
+
+	report.Summary = checker.Summarize(allChecks)
+	report.AllChecks = allChecks
+	return report, nil
+}
