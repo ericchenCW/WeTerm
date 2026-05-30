@@ -3,7 +3,6 @@ package table_test
 import (
 	"encoding/json"
 	"testing"
-	"weterm/pages/healthcheck"
 )
 
 const (
@@ -60,8 +59,23 @@ const (
 `
 )
 
+// serverData 是一个自包含的主机指标结构，仅用于验证 table 包能处理的 JSON 形态。
+// 原先复用 pages/healthcheck.ServerData，该包已被 weops-inspect 取代后删除，故在此
+// 内联一个等价结构，保持测试独立。
+type serverData struct {
+	CPUPercent float64   `json:"cpu_percent"`
+	CPULoad    []float64 `json:"cpu_load"`
+	Memory     struct {
+		Total     string  `json:"total"`
+		Available string  `json:"available"`
+		Percent   float64 `json:"percent"`
+		Used      string  `json:"used"`
+		Free      string  `json:"free"`
+	} `json:"memory"`
+}
+
 func TestUnmarshalJson(t *testing.T) {
-	var msg healthcheck.ServerData
+	var msg serverData
 	if err := json.Unmarshal([]byte(JSON), &msg); err != nil {
 		t.Error(err)
 	}

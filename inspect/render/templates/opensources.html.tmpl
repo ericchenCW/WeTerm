@@ -1,0 +1,349 @@
+{{define "opensources.html.tmpl"}}
+
+{{/* Elasticsearch */}}
+{{if .ES}}
+{{range .ES}}
+<div class="section">
+    <div class="section-title">Elasticsearch 集群 - {{.Instance}}</div>
+    <div class="section-body">
+        {{if .Error}}
+        <p class="status-warn">{{.Error}}</p>
+        {{else}}
+        <table>
+            <tr><th>集群名称</th><th>状态</th><th>节点数</th><th>数据节点</th><th>活跃分片</th><th>未分配分片</th><th>待处理任务</th><th>分片百分比</th></tr>
+            <tr>
+                <td>{{.ClusterName}}</td>
+                <td style="color:{{esStatusColor .Status}};font-weight:bold;">{{.Status}}</td>
+                <td>{{.NumberOfNodes}}</td>
+                <td>{{.NumberOfDataNodes}}</td>
+                <td>{{.ActiveShards}}</td>
+                <td class="{{statusClass .UnassignedStatus}}">{{.UnassignedShards}}</td>
+                <td class="{{statusClass .PendingStatus}}">{{.PendingTasks}}</td>
+                <td>{{printf "%.1f%%" .ActiveShardsPercent}}</td>
+            </tr>
+        </table>
+        {{if .Nodes}}
+        <table style="margin-top:12px;">
+            <tr><th>节点IP</th><th>角色</th><th>Heap%</th><th>RAM%</th><th>CPU%</th><th>Load 1m</th><th>Load 5m</th><th>Load 15m</th></tr>
+            {{range .Nodes}}
+            <tr>
+                <td>{{.IP}}</td>
+                <td>{{.Role}}</td>
+                <td class="{{statusClass .HeapStatus}}">{{.HeapPercent}}%</td>
+                <td class="{{statusClass .RAMStatus}}">{{.RAMPercent}}%</td>
+                <td>{{.CPU}}%</td>
+                <td>{{printf "%.2f" .Load1m}}</td>
+                <td>{{printf "%.2f" .Load5m}}</td>
+                <td>{{printf "%.2f" .Load15m}}</td>
+            </tr>
+            {{end}}
+        </table>
+        {{end}}
+        {{end}}
+        {{if .NodeReachability}}
+        <table style="margin-top:12px;">
+            <tr><th colspan="3">节点可达性 (9200/tcp)</th></tr>
+            <tr><th>IP</th><th>状态</th><th>详情</th></tr>
+            {{range .NodeReachability}}
+            <tr>
+                <td>{{.IP}}</td>
+                <td class="{{statusClass .RenderStatus}}">{{.Status}}</td>
+                <td>{{.Detail}}</td>
+            </tr>
+            {{end}}
+        </table>
+        {{end}}
+    </div>
+</div>
+{{end}}
+{{end}}
+
+{{/* MySQL */}}
+{{if .MySQL}}
+{{range .MySQL}}
+<div class="section">
+    <div class="section-title">MySQL - {{.Instance}}</div>
+    <div class="section-body">
+        {{if .Error}}
+        <p class="status-warn">{{.Error}}</p>
+        {{else}}
+        <table>
+            <tr><th>IP</th><th>版本</th><th>角色</th><th>最大连接</th><th>日志过期天数</th><th>Binlog数</th><th>慢查询</th><th>字符集</th><th>缓冲池</th><th>IO容量</th></tr>
+            {{range .Nodes}}
+            <tr>
+                <td>{{.IP}}</td>
+                <td>{{.Version}}</td>
+                <td>{{.Role}}</td>
+                <td>{{.MaxConnections}}</td>
+                <td>{{.ExpireLogsDays}}</td>
+                <td>{{.BinlogCount}}</td>
+                <td>{{.SlowQueryLog}}</td>
+                <td>{{.CharacterSet}}</td>
+                <td>{{.BufferPoolSize}}</td>
+                <td>{{.InnodbIOCapacity}}</td>
+            </tr>
+            {{end}}
+        </table>
+        {{end}}
+    </div>
+</div>
+{{end}}
+{{end}}
+
+{{/* Redis - standalone nodes */}}
+{{if .RedisStandalone}}
+<div class="section">
+    <div class="section-title">Redis 单点节点</div>
+    <div class="section-body">
+        <table>
+            <tr><th>IP</th><th>版本</th><th>角色</th><th>集群</th><th>内存使用</th><th>最大内存</th><th>运行天数</th><th>连接数</th><th>阻塞数</th><th>Celery队列</th><th>Monitor队列</th><th>错误</th></tr>
+            {{range .RedisStandalone}}
+            <tr>
+                <td>{{.IP}}</td>
+                <td>{{.Version}}</td>
+                <td>{{.Role}}</td>
+                <td>{{.ClusterEnabled}}</td>
+                <td>{{.UsedMemory}}</td>
+                <td>{{.MaxMemory}}</td>
+                <td>{{.UptimeDays}}</td>
+                <td>{{.ConnectedClients}}</td>
+                <td>{{.BlockedClients}}</td>
+                <td class="{{statusClass .CeleryQueueStatus}}">{{.CeleryQueue}}</td>
+                <td class="{{statusClass .MonitorQueueStatus}}">{{.MonitorQueue}}</td>
+                <td class="{{statusClass .ErrorStatus}}">{{.Error}}</td>
+            </tr>
+            {{end}}
+        </table>
+    </div>
+</div>
+{{end}}
+
+{{/* Redis - sentinel cluster */}}
+{{if .RedisSentinel}}
+<div class="section">
+    <div class="section-title">Redis Sentinel 集群</div>
+    <div class="section-body">
+        {{if .RedisSentinel.Error}}
+        <p class="status-warn">{{.RedisSentinel.Error}}</p>
+        {{end}}
+        <table>
+            <tr><th>master 名</th><th>发现的 master</th><th>master 可达</th><th>与 env 一致</th><th>集群状态</th></tr>
+            <tr>
+                <td>{{.RedisSentinel.MasterName}}</td>
+                <td>{{.RedisSentinel.DiscoveredMaster}}</td>
+                <td class="{{statusClass .RedisSentinel.MasterReachableStatus}}">{{boolLabel .RedisSentinel.MasterReachable "是" "否"}}</td>
+                <td class="{{statusClass .RedisSentinel.MasterEnvMatchStatus}}">{{.RedisSentinel.MasterEnvMatch}}</td>
+                <td class="{{statusClass .RedisSentinel.OverallStatus}}">{{.RedisSentinel.Status}}</td>
+            </tr>
+        </table>
+        {{if .RedisSentinel.Sentinels}}
+        <h4 style="margin:12px 0 8px;">哨兵节点</h4>
+        <table>
+            <tr><th>IP</th><th>端口</th><th>可达</th><th>错误</th></tr>
+            {{range .RedisSentinel.Sentinels}}
+            <tr>
+                <td>{{.IP}}</td>
+                <td>{{.Port}}</td>
+                <td class="{{statusClass .RenderStatus}}">{{boolLabel .Reachable "是" "否"}}</td>
+                <td>{{.Error}}</td>
+            </tr>
+            {{end}}
+        </table>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{/* MongoDB */}}
+{{if .MongoDB}}
+{{range .MongoDB}}
+<div class="section">
+    <div class="section-title">MongoDB - {{.Instance}}</div>
+    <div class="section-body">
+        {{if .Error}}
+        <p class="status-warn">{{.Error}}</p>
+        {{else}}
+        <table>
+            <tr><th>节点</th><th>健康</th><th>状态</th><th>运行时间(s)</th><th>同步源</th></tr>
+            {{range .Members}}
+            <tr>
+                <td>{{.Name}}</td>
+                <td class="{{statusClass .HealthStatus}}">{{mongoHealthLabel .Health}}</td>
+                <td>{{.StateStr}}</td>
+                <td>{{.Uptime}}</td>
+                <td>{{.SyncSourceHost}}</td>
+            </tr>
+            {{end}}
+        </table>
+        {{end}}
+    </div>
+</div>
+{{end}}
+{{end}}
+
+{{/* RabbitMQ */}}
+{{if .RabbitMQ}}
+<div class="section">
+    <div class="section-title">RabbitMQ</div>
+    <div class="section-body">
+        {{if .RabbitMQ.Error}}
+        <p class="status-warn">{{.RabbitMQ.Error}}</p>
+        {{else}}
+        <table>
+            <tr><th>集群分区</th><th>运行时间</th><th>连接数</th><th>异常连接</th><th>通道数</th></tr>
+            <tr>
+                <td class="{{statusClass .RabbitMQ.PartitionStatus}}">{{boolLabel .RabbitMQ.ClusterPartition "存在分区" "正常"}}</td>
+                <td>{{.RabbitMQ.Uptime}}</td>
+                <td>{{.RabbitMQ.TotalConnections}}</td>
+                <td class="{{statusClass .RabbitMQ.AbnormalConnStatus}}">{{.RabbitMQ.AbnormalConnections}}</td>
+                <td>{{.RabbitMQ.TotalChannels}}</td>
+            </tr>
+        </table>
+        {{if .RabbitMQ.QueuesError}}
+        <p class="status-warn">queues 接口失败: {{.RabbitMQ.QueuesError}}</p>
+        {{end}}
+        {{if .RabbitMQ.VHostSummary}}
+        <h4 style="margin:12px 0 8px;">VHost 汇总</h4>
+        <table>
+            <tr><th>VHost</th><th>队列数</th><th>消息总数</th><th>消费者总数</th></tr>
+            {{range .RabbitMQ.VHostSummary}}
+            <tr>
+                <td>{{.VHost}}</td>
+                <td>{{.Queues}}</td>
+                <td>{{.Messages}}</td>
+                <td>{{.Consumers}}</td>
+            </tr>
+            {{end}}
+        </table>
+        {{end}}
+        {{if .RabbitMQ.NodeAlarms}}
+        <h4 style="margin:12px 0 8px;">节点告警</h4>
+        <table>
+            <tr><th>节点</th><th>内存告警</th><th>磁盘告警</th></tr>
+            {{range .RabbitMQ.NodeAlarms}}
+            <tr>
+                <td>{{.Node}}</td>
+                <td class="{{statusClass .MemStatus}}">{{boolLabel .MemAlarm "告警" "正常"}}</td>
+                <td class="{{statusClass .DiskFreeStatus}}">{{boolLabel .DiskFreeAlarm "告警" "正常"}}</td>
+            </tr>
+            {{end}}
+        </table>
+        {{end}}
+        {{if .RabbitMQ.ExceedingQueues}}
+        <h4 style="margin:12px 0 8px;">消息积压队列</h4>
+        <table>
+            <tr><th>VHost</th><th>队列</th><th>消息数</th><th>消费者</th></tr>
+            {{range .RabbitMQ.ExceedingQueues}}
+            <tr>
+                <td>{{.VHost}}</td>
+                <td>{{.Queue}}</td>
+                <td class="{{statusClass .MessageStatus}}">{{.MessageCount}}</td>
+                <td>{{.Consumers}}</td>
+            </tr>
+            {{end}}
+        </table>
+        {{end}}
+        {{if .RabbitMQ.StalledQueues}}
+        <h4 style="margin:12px 0 8px;">消费停滞队列</h4>
+        <table>
+            <tr><th>VHost</th><th>队列</th><th>消息数</th><th>消费者</th><th>ack/s</th><th>publish/s</th></tr>
+            {{range .RabbitMQ.StalledQueues}}
+            <tr>
+                <td>{{.VHost}}</td>
+                <td>{{.Queue}}</td>
+                <td class="{{statusClass .MessageStatus}}">{{.MessageCount}}</td>
+                <td class="{{statusClass .ConsumerStatus}}">{{.Consumers}}</td>
+                <td>{{printf "%g" .AckRate}}</td>
+                <td>{{printf "%g" .PublishRate}}</td>
+            </tr>
+            {{end}}
+        </table>
+        {{end}}
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{/* Replication health (MySQL master/slave + Redis master/slave) */}}
+{{if .Replication}}
+<div class="section">
+    <div class="section-title">主从复制健康</div>
+    <div class="section-body">
+        {{if .Replication.MySQLMasters}}
+        <h4 style="margin:0 0 8px;">MySQL master read_only</h4>
+        <table>
+            <tr><th>IP</th><th>read_only</th><th>状态</th><th>错误</th></tr>
+            {{range .Replication.MySQLMasters}}
+            <tr>
+                <td>{{.IP}}</td>
+                <td>{{boolLabel .ReadOnly "ON" "OFF"}}</td>
+                <td class="{{okClass .Status}}">{{.Status}}</td>
+                <td>{{.Error}}</td>
+            </tr>
+            {{end}}
+        </table>
+        {{end}}
+
+        {{if .Replication.MySQLSlaves}}
+        <h4 style="margin:12px 0 8px;">MySQL slave 复制</h4>
+        <table>
+            <tr><th>IP</th><th>IO</th><th>SQL</th><th>延迟(秒)</th><th>master</th><th>状态</th><th>错误</th></tr>
+            {{range .Replication.MySQLSlaves}}
+            <tr>
+                <td>{{.IP}}</td>
+                {{if .Replication}}
+                <td class="{{yesClass .Replication.IORunning}}">{{.Replication.IORunning}}</td>
+                <td class="{{yesClass .Replication.SQLRunning}}">{{.Replication.SQLRunning}}</td>
+                <td>{{.Replication.SecondsBehindMaster}}</td>
+                <td>{{.Replication.MasterHost}}</td>
+                <td class="{{okClass .Replication.Status}}">{{.Replication.Status}}</td>
+                <td>{{.Replication.LastIOError}}{{if and .Replication.LastIOError .Replication.LastSQLError}} / {{end}}{{.Replication.LastSQLError}}</td>
+                {{else}}
+                <td colspan="6" class="status-warn">{{.Error}}</td>
+                {{end}}
+            </tr>
+            {{end}}
+        </table>
+        {{end}}
+
+        {{if .Replication.RedisNodes}}
+        <h4 style="margin:12px 0 8px;">Redis 主从角色与同步</h4>
+        <table>
+            <tr><th>IP</th><th>角色</th><th>角色一致</th><th>master 链路</th><th>同步秒</th><th>状态</th></tr>
+            {{range .Replication.RedisNodes}}
+            <tr>
+                <td>{{.IP}}</td>
+                <td>{{.Role}}</td>
+                <td class="{{okClass .RoleConsistencyStatus}}">{{.RoleConsistencyStatus}}</td>
+                <td>{{.MasterLinkStatus}}</td>
+                <td>{{.MasterLastIOSeconds}}</td>
+                <td class="{{linkStatusClass .LinkStatus}}">{{.LinkStatus}}</td>
+            </tr>
+            {{end}}
+        </table>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{/* bkmonitorv3 dependency connectivity */}}
+{{if .BKMonitorV3}}
+<div class="section">
+    <div class="section-title">bkmonitorv3 依赖连通性</div>
+    <div class="section-body">
+        <table>
+            <tr><th>依赖项</th><th>端点</th><th>状态</th><th>详情</th></tr>
+            {{range .BKMonitorV3.Dependencies}}
+            <tr>
+                <td>{{.Item}}</td>
+                <td>{{.Endpoint}}</td>
+                <td class="{{depStatusClass .Status}}">{{.Status}}</td>
+                <td>{{.Detail}}</td>
+            </tr>
+            {{end}}
+        </table>
+    </div>
+</div>
+{{end}}
+
+{{end}}

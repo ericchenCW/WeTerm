@@ -1,0 +1,396 @@
+# 巡检判定规则参考
+
+本文档描述 `add-platform-checks-coverage` 改造后引入的判定流水线、四档状态语义、
+各组件判定规则速查、以及告警邮件的签名/通知决策状态机。受众是值班、二次开发、
+调优的同学。运维操作向（部署、阈值速查、邮件配置）见 [README.md](../README.md)。
+
+> 本文档**只覆盖本次改造引入的判定逻辑**。主机 CPU/Mem/Disk、复制（replication）等
+> 已有逻辑见 `openspec/specs/host-metrics-collection/` 与
+> `openspec/specs/replication-collection/`。
+
+---
+
+## 1. 流水线总览
+
+```
+原始数据                  统一判定                                出口
+─────────                 ────────                                ────
+
+主机 SSH                 ┌─ CheckHost ─────────────────────────┐
+HostMetrics ─────────────┤                                      │
+                         │                                      │
+service 采集             ├─ CheckService           ──┐          │
+ServiceModule ───────────┤  + CheckServiceContainers │          │
+                         │  + CheckServiceCollectError          │
+                         │                                      │
+ESCluster[] ─────────────┼─ CheckES                             │
+RedisNode[] ─────────────┼─ CheckRedis                          ├─► []CheckResult
+SentinelClusterStatus ───┼─ CheckRedisSentinel                  │   = report.AllChecks
+MongoCluster[] ──────────┼─ CheckMongo                          │
+RabbitMQStatus ──────────┼─ CheckRabbitMQ                       │
+BKMonitorV3Section ──────┼─ CheckBKDeps                         │
+ReplicationReport ───────┘─ CheckReplication                    │
+                                                                │
+                                  ┌─────────────────────────────┘
+                                  │
+                                  ▼
+                    ┌─────────────────────────────┐
+                    │         三个出口            │
+                    └─────────────────────────────┘
+
+  Summary                  邮件                          HTML 着色
+  ───────                  ────                          ─────────
+  Summarize 计数:          ExtractAlerts:                Checker 同步在
+  - OK                     仅 Status==Warn               渲染结构上回填
+  - Warn                   ↓                             Status 字段
+  - Unknown                Signature(items)              ↓
+  - Total = OK+Warn+       ↓                             模板按 Status
+       Unknown             Decide(now, prev, sig...)     调 statusClass()
+  Notice 不计入            ↓                              着色（状态-类
+                           SMTP Send                     的映射见 §4.4）
+```
+
+**单一事实源**：HTML 红字、Summary 计数、邮件告警三处都读 `CheckResult.Status`。
+模板里**禁止**出现 `{{if gt .X N}}` / `{{if eq .X "ok"}}` 之类的内联判断；
+CI 通过 `make lint` 守卫这一点。
+
+---
+
+## 2. 四档状态语义
+
+| 状态      | 计入 Total | 桶       | 进邮件 | HTML class      | 视觉 |
+|-----------|------------|----------|--------|-----------------|------|
+| `ok`      | ✓          | OK       | —      | `status-ok`     | 绿   |
+| `warn`    | ✓          | Warn     | ✓      | `status-warn`   | 红   |
+| `unknown` | ✓          | Unknown  | —      | `status-na`     | 灰   |
+| `notice`  | —          | （不计） | —      | `status-warn`   | 红   |
+
+### 为什么 Warn 与 Notice 同色不同语义？
+
+**Warn**：明确异常，需要值班响应。例：节点不可达、RabbitMQ 队列积压。
+
+**Notice**：超阈值但本轮不视为告警。例：ES RAM 96%（阈值 95），运维心里有数即可，
+不用立即起夜。区分语义的目的是允许"红字提示"而**不**让邮件变得吵闹。如果某个
+Notice 项后续上升为应告警，把它在对应 checker 里改成 `StatusWarn` 即可（一处改动）。
+
+### 为什么需要 Unknown 桶？
+
+历史症状：`job-analysis` 子模块在某些主机上没注册，采集到的 `Status=""`。
+
+- 旧 `CheckService` 跳过空状态 → 不进 Summary
+- 旧 `notify.ExtractAlerts` 把空状态视为非 active → 进邮件
+- 结果：控制台 `0 告警` 仍发邮件
+
+修复方案是把"应该有数据没采到"明确归为 `Unknown`：进 Summary 让运维知道这个
+主机这条子服务没采到，但**不**视为告警。
+
+---
+
+## 3. 各组件判定规则速查
+
+每条规则的格式：`字段 / 条件 → Status`。Field 命名遵循 §5 约定。
+
+### 3.1 Service（蓝鲸模块子服务）
+
+来源：[checker/rules.go](../checker/rules.go) `CheckService` /
+`CheckServiceContainers` / `CheckServiceCollectError`。
+
+| 字段                          | 条件                          | Status   |
+|-------------------------------|-------------------------------|----------|
+| `ServiceModule.Status`        | `""`（空字符串）              | Unknown  |
+| `ServiceModule.Status`        | `"active"`                    | OK       |
+| `ServiceModule.Status`        | 其他                          | Warn     |
+| `ServiceModule.HealthzAPI`    | `""` 或 `"N/A"`               | （不产生）|
+| `ServiceModule.HealthzAPI`    | `"ok"`                        | OK       |
+| `ServiceModule.HealthzAPI`    | 其他                          | Warn     |
+| `ServiceStatus.Error`         | 非空（采集本身失败）           | Notice   |
+| `ServiceStatus.ContainersExited` | `> Thresholds.ServiceContainersExited` | Notice |
+
+### 3.2 Elasticsearch
+
+来源：[checker/es.go](../checker/es.go) `CheckES`。
+
+| 字段                                      | 条件                                  | Status  |
+|-------------------------------------------|---------------------------------------|---------|
+| `ESCluster.Error`                         | 非空                                  | Warn（且跳过该集群下属节点检查） |
+| `ESCluster.Status`                        | `"green"`                             | OK      |
+| `ESCluster.Status`                        | 非空且非 `"green"`                    | Notice  |
+| `ESCluster.UnassignedShards`              | `> Thresholds.ESUnassignedShards`     | Notice  |
+| `ESCluster.PendingTasks`                  | `> 0`                                 | Notice  |
+| `ESNode.HeapPercent`                      | `> Thresholds.ESHeapPercent`          | Notice  |
+| `ESNode.RAMPercent`                       | `> Thresholds.ESRAMPercent`           | Notice  |
+| `ESNodeReach.Status`                      | `"unreachable"`                       | Warn    |
+
+### 3.3 Redis 单点
+
+来源：[checker/redis.go](../checker/redis.go) `CheckRedis`。
+
+| 字段                          | 条件                                       | Status  |
+|-------------------------------|--------------------------------------------|---------|
+| `RedisNode.Error`             | 非空                                       | Warn    |
+| `RedisNode.CeleryQueue`       | `> Thresholds.RedisCeleryQueue`            | Notice  |
+| `RedisNode.MonitorQueue`      | `> Thresholds.RedisMonitorQueue`           | Notice  |
+
+### 3.4 Redis Sentinel
+
+来源：[checker/redis.go](../checker/redis.go) `CheckRedisSentinel`。
+
+| 字段                                      | 条件                              | Status  |
+|-------------------------------------------|-----------------------------------|---------|
+| `SentinelClusterStatus.Error`             | 非空                              | Warn    |
+| `SentinelClusterStatus.MasterReachable`   | `false`                           | Warn    |
+| `SentinelClusterStatus.MasterEnvMatch`    | `"warn"`                          | Warn    |
+| `SentinelClusterStatus.MasterEnvMatch`    | `"ok"` / `"N/A"`                  | OK / 不产生 |
+| `SentinelClusterStatus.Status`            | `"ok"`                            | OK      |
+| `SentinelClusterStatus.Status`            | 其他                              | Warn    |
+| `SentinelNodeStatus.Reachable`            | `false`                           | Warn    |
+
+### 3.5 MongoDB
+
+来源：[checker/mongo.go](../checker/mongo.go) `CheckMongo`。
+
+| 字段                          | 条件                          | Status  |
+|-------------------------------|-------------------------------|---------|
+| `MongoCluster.Error`          | 非空（跳过成员检查）          | Warn    |
+| `MongoMember.Health`          | `1`                           | OK      |
+| `MongoMember.Health`          | `≠ 1`                         | Notice  |
+
+### 3.6 RabbitMQ
+
+来源：[checker/rabbitmq.go](../checker/rabbitmq.go) `CheckRabbitMQ`。
+
+| 字段                                      | 条件                              | Status  |
+|-------------------------------------------|-----------------------------------|---------|
+| `RabbitMQStatus.Error`                    | 非空                              | Warn    |
+| `RabbitMQStatus.QueuesError`              | 非空（queues API 失败）           | Warn    |
+| `RabbitMQStatus.ClusterPartition`         | `true`                            | Warn    |
+| `RabbitMQStatus.AbnormalConnections`      | `> 0`                             | Warn    |
+| `RabbitMQAlarm.MemAlarm`                  | `true`                            | Warn    |
+| `RabbitMQAlarm.DiskFreeAlarm`             | `true`                            | Warn    |
+| `RabbitMQStatus.ExceedingQueues[]`        | 非空切片每条                       | Warn    |
+| `RabbitMQStatus.StalledQueues[]`          | 非空切片每条                       | Warn    |
+
+> ExceedingQueues / StalledQueues 的"是否进切片"由 collector 完成。两条规则正交：
+> - **Backlog**：`messages >= RabbitMQQueueBacklog`，产能跟不上的洪峰场景。
+> - **Stalled**：`messages > 0 AND ack_rate < RabbitMQStalledAckRateMax AND publish_rate > RabbitMQStalledPublishRateMin`，
+>   含旧"无消费者"场景（cons=0 时 ack 必为 0）以及新覆盖的"消费者卡死"场景
+>   （cons>0 但 worker 不 ack）。`publish_rate > min` 用于豁免低流量稳态队列；
+>   把 `RabbitMQStalledPublishRateMin` 设为负数可关闭该条件。
+>
+> `message_stats` 缺失时 ack/publish 速率均按 0 解析；此时 publish_rate>0 子句不成立，
+> 新建空闲队列被自动豁免。`RabbitMQStalledVHostBlacklist` 命中的 vhost 全程跳过 stalled
+> 告警（backlog 仍生效）。Checker 只把切片元素逐条转 CheckResult，不重新判定。
+
+### 3.7 bkmonitorv3 依赖联通性
+
+来源：[checker/bkdeps.go](../checker/bkdeps.go) `CheckBKDeps`。
+
+| 字段                          | 条件                          | Status     |
+|-------------------------------|-------------------------------|------------|
+| `DependencyResult.Status`     | `"ok"`                        | OK         |
+| `DependencyResult.Status`     | `"skip"`                      | （不产生） |
+| `DependencyResult.Status`     | 其他（`fail` / `unreachable`）| Notice     |
+
+---
+
+## 4. 邮件告警决策
+
+### 4.1 抽取 Warn 项
+
+[notify/alerts.go](../notify/alerts.go) `ExtractAlerts(report)` 只读
+`report.AllChecks` 中 `Status == StatusWarn` 的条目，**不读** Unknown / Notice / OK。
+
+每条产生一个 `AlertItem{Host, Field, Value, Threshold}`：
+- `Host`：从 `report.Hosts[].Checks` 反查 Field 对应的 IP；查不到留空（如
+  cluster-level 的 RabbitMQ.error）。
+- `Field`：CheckResult.Field（命名约定见 §5）。
+- `Value`：CheckResult.Value。
+- `Threshold`：CheckResult.Threshold，人类可读的触发阈值或期望值（如 `≥ 95%`、
+  `期望 active`、`> 10000 msgs`）；关系型规则（load_average、replication 角色一致性
+  等）为空。邮件正文每行在告警值后追加 `(阈值 X)` 后缀；空 Threshold 不渲染该后缀。
+  Threshold **不参与签名计算**——调阈值（如 95% → 90%）不会刷掉抑制态。
+
+### 4.2 签名（去重 key）
+
+[notify/signature.go](../notify/signature.go) `Signature(items)`：
+- 输入：所有 Warn `AlertItem`。
+- 算法：对 `host + "|" + field` 去重排序后 SHA-256。
+- **不**包含 Value：CPU 76% → 78% 视为同一告警（同 host 同 field），不变签名。
+- 空集签名为 `""`，与"有告警"场景可区分。
+- Unknown / Notice 不参与签名。
+- **RabbitMQ 队列级 Field 归一化**：形如 `rabbitmq.<vhost>.<queue>.stalled`
+  与 `rabbitmq.<vhost>.<queue>.backlog` 的 Field 在签名前折叠为
+  `rabbitmq.<vhost>.stalled` / `rabbitmq.<vhost>.backlog`，同 vhost 内多
+  队列同类告警去重为单一签名键。目的：避免 celery 派生的瞬态队列名（如
+  `celery_api_cron` ↔ `celery_alert_builder`）漂移在两次相邻巡检间反复绕过
+  冷却窗口。`rabbitmq.error` / `rabbitmq.cluster_partition` /
+  `rabbitmq.node.<n>.mem_alarm` 等集群级 Field 不受影响，原样参与签名。
+- **行为变更**（自该归一化引入起）：同 vhost 内队列轮换不再触发立即重发，
+  运维需等到冷却窗口结束（默认 2 小时）才会收到反映最新队列清单的邮件；
+  跨 vhost 新增告警仍会立即触发。升级首次巡检若已有持续告警，会因签名值
+  变化触发一次性重发，之后行为收敛。
+
+### 4.3 持续确认前置层
+
+[notify/persistence.go](../notify/persistence.go) `ApplyPersistence(items, prev.Pending, N, now)`：
+
+```
+   raw warns ────────────► 持续确认 ──── filtered ───► 签名 / Decide
+        │                       │                        │
+        │                       ▼                        ▼
+        │              pending(count=k)            邮件 / state
+        │              k<N: 抑制, 写 pending
+        │              k≥N: 晋升 firing
+        │
+        └─► UpdateRecoveryStreak(prev.streak, prev.status, rawEmpty)
+                rawEmpty + status=alert → +1
+                rawEmpty=false        → 0
+                status≠alert          → 0
+```
+
+- `consecutive_runs` (N)：默认 2，下限 1（=禁用本特性）。
+- `pending` 键 = `host + "|" + field`，使用**原始** Field（未经 RabbitMQ 队列
+  归一化），保证同 vhost 不同队列各自独立累积。
+- 24 小时 GC：FirstSeen 早于 24h 的 pending 项视为冷启动；本轮未出现的键自然丢弃。
+- recovery 端：上次状态为 alert 时，`recovery_streak` 累积"连续 raw 为空"次数；
+  达到 N 次才发恢复邮件，未达视为抑制（last_status 不变）。raw 非空即重置 streak。
+- 报告同步：未通过持续确认的 Warn CheckResult 在 demote 阶段降为 `notice`，
+  Summary 重算，邮件正文与 HTML 报告 warn 计数一致。
+
+### 4.4 决策状态机
+
+[notify/trigger.go](../notify/trigger.go) `Decide(now, prev, warnCount, sig, cooldown)`：
+
+```
+                              ┌──────────────────────────┐
+                              │   本次 Warn count == 0   │
+                              ├──────────────┬───────────┤
+                              │              │           │
+                  prev.Status │  ok / 空     │  alert    │
+                              ├──────────────┼───────────┤
+              动作            │  None        │ SendRecovery │
+                              └──────────────┴───────────┘
+
+                              ┌──────────────────────────┐
+                              │   本次 Warn count > 0    │
+                              ├──────────────┬───────────┤
+                              │              │           │
+                              │ prev.Status  │  动作     │
+                              │ 空 / ok      │  SendAlert │
+                              ├──────────────┼───────────┤
+                              │ alert        │  ↓        │
+                              │   sig != prev.sig (告警集合变化) │ SendAlert (立即) │
+                              │   sig == prev.sig            │
+                              │     now - prev.sentAt ≥ 2h   │ SendAlert (重发) │
+                              │     now - prev.sentAt < 2h   │ None    (抑制)   │
+                              └──────────────┴───────────┘
+```
+
+冷却窗口默认 2 小时（`trigger.min_interval_minutes`）。
+
+### 4.5 邮件正文
+
+[notify/email.go](../notify/email.go) `BuildAlertBody`：
+
+```
+[WeOps 巡检告警] 2026-05-08 21:44:07
+Summary: 共 152 项检查，142 正常，9 告警，1 未知
+
+告警明细:
+  10.10.26.237   load_average                              = 42.39/40.57/40.29 (cores: 16)
+                 rabbitmq.prod_bk_monitorv3.celery.backlog = 317496 msgs / 0 consumers
+                 rabbitmq.bk_bkmonitorv3.celery_cron.stalled = 69 msgs / 0 consumers / ack=0/s / pub=0.5/s (阈值 ack < 0.01/s, pub > 0/s)
+                 ...
+
+详见附件 weops_inspection.html。
+```
+
+- Summary 行包含 Unknown 计数。
+- 明细**仅展示 Warn 项**；Unknown / Notice 不进邮件正文（HTML 报告里仍可见）。
+- HTML 报告作为附件 + 邮件 alternative body 一同发送。
+
+### 4.6 持久化
+
+[notify/state.go](../notify/state.go) `~/.config/weops/state.json`：
+
+字段：
+- `last_sent_at` / `last_signature` / `last_status`：决策矩阵基线，仅 SMTP **发送
+  成功**后写入。失败保留旧基线，下次按旧状态判定，避免一次抖动让告警长期被
+  误抑制。
+- `pending`（map）：每个 `host|field` 的连续告警次数与首次出现时间。每次巡检
+  按规则更新（即使本次抑制邮件）；发送失败时连同其他字段一起回滚。
+- `recovery_streak`（int）：连续 raw 告警为空的次数，仅在 `last_status=alert`
+  时累积；同样每次巡检按规则更新，发送失败时回滚。
+
+旧版本 state.json（无 `pending` / `recovery_streak`）按"空 map + 0"读入，无需
+迁移。
+
+---
+
+## 5. CheckResult.Field 命名约定
+
+签名稳定性依赖 Field 命名。新增 metric 时务必避免与历史 field 冲突。
+
+```
+es.{instance}.cluster_error                    # ES 集群错误
+es.{instance}.cluster_status                   # ES 集群 yellow/red
+es.{instance}.unassigned_shards                # ES 未分配分片
+es.{instance}.pending_tasks                    # ES 待处理任务
+es.{instance}.{ip}.heap                        # ES 节点 heap
+es.{instance}.{ip}.ram                         # ES 节点 ram
+es.{instance}.{ip}.reachability                # ES 节点 9200 可达性
+
+redis.{ip}.error                               # Redis 节点错误
+redis.{ip}.celery_queue                        # Redis celery 队列长度
+redis.{ip}.monitor_queue                       # Redis monitor 队列长度
+
+redis_sentinel.error
+redis_sentinel.master_reachable
+redis_sentinel.master_env_match
+redis_sentinel.status
+redis_sentinel.{ip}.reachable                  # sentinel 节点可达性
+
+mongo.{instance}.error
+mongo.{instance}.{member_name}.health
+
+rabbitmq.error
+rabbitmq.queues_error
+rabbitmq.cluster_partition
+rabbitmq.abnormal_connections
+rabbitmq.node.{node}.mem_alarm
+rabbitmq.node.{node}.disk_free_alarm
+rabbitmq.{vhost}.{queue}.backlog               # ExceedingQueues 每条
+rabbitmq.{vhost}.{queue}.stalled               # StalledQueues 每条
+
+bkdeps.{item}.status                           # mysql / redis / es7 / ...
+
+service.{module}/{submodule}.status            # systemctl 状态
+service.{module}/{submodule}.healthz           # healthz API
+service.{module}.collect_error                 # service 段采集失败
+service.{module}.docker.exited                 # Docker 退出容器数
+
+# 主机段沿用旧 Field（无前缀），由 host_metrics-collection 规范定义：
+cpu_usage / mem_usage / disk_usage(<mount>) / inode_usage(<mount>) /
+max_open_files / selinux / firewalld / chronyd / load_average
+
+# 复制段沿用旧 Field：
+mysql_master(<ip>).read_only / mysql_slave(<ip>).replication /
+redis(<ip>).role / redis(<ip>).link
+```
+
+---
+
+## 6. 设计取舍速记
+
+- **为什么模板用 `statusClass()` 而不是直接条件渲染？** 三个出口（HTML / Summary /
+  邮件）共享同一 Status 字段是单一事实源。模板里如果写 `{{if gt .X N}}` 会让
+  阈值散落到第二处（与 `Thresholds` 配置 + checker 形成三处真相）。
+- **为什么 RabbitMQ Notice 全是 Warn 不是 Notice？** RabbitMQ 的所有告警项
+  都是有"业务影响"的（积压、节点告警、连接异常），值班需要响应。后续若发现误报
+  率高，可单独把 StalledQueues 降为 Notice。
+- **为什么 Mongo `Health != 1` 是 Notice 而非 Warn？** Health 字段在副本集恢复
+  期间会短暂变 0，频繁告警噪音大。如果你的环境对此敏感，可以在 checker/mongo.go
+  里改成 Warn。
+- **为什么 bkdeps `fail` 是 Notice？** 现实中 bkdeps mysql 探测经常因为
+  `mysql --execute` 的 stderr noise 误报 fail，可信度不足以告警。本质问题是
+  collector 的 fail 判定不严格，应在 collector 侧修，而不是放大到邮件。
