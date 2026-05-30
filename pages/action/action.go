@@ -11,19 +11,19 @@ type ActionInfo struct {
 	Script      string // 脚本内容
 }
 
-//go:embed asserts/unseal_vault.sh
+//go:embed assets/unseal_vault.sh
 var unsealVaultScript string
 
-//go:embed asserts/reload_casbin.sh
+//go:embed assets/reload_casbin.sh
 var reloadCasbinScript string
 
-//go:embed asserts/backup_mongodb.sh
+//go:embed assets/backup_mongodb.sh
 var backupMongodbScript string
 
-//go:embed asserts/backup_mysql.sh
+//go:embed assets/backup_mysql.sh
 var backupMysqlScript string
 
-//go:embed asserts/purge_rabbitmq_queues.sh
+//go:embed assets/purge_rabbitmq_queues.sh
 var purgeQueueScript string
 
 // Actions 注册所有可用的动作

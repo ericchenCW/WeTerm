@@ -67,13 +67,13 @@ type CPUDetail struct {
 	Cores string `json:"cores"`
 }
 
-//go:embed asserts/host_base.py
+//go:embed assets/host_base.py
 var baseScript string
 
-//go:embed asserts/host_detail.py
+//go:embed assets/host_detail.py
 var detailScript string
 
-//go:embed asserts/host_detail.tpl
+//go:embed assets/host_detail.tpl
 var detailTemplate string
 
 func NewHostHealth() HostHealth {

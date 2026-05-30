@@ -15,11 +15,11 @@ import (
 	capi "github.com/hashicorp/consul/api"
 )
 
-//go:embed asserts/*
+//go:embed assets/*
 var fs embed.FS
 
 var basePath = "/etc/consul-template/templates/"
-var embedPath = "asserts/"
+var embedPath = "assets/"
 var reloadScript = "reload_openresty.sh"
 var files = []string{
 	"paas.conf",

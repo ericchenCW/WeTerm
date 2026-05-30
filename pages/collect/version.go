@@ -16,7 +16,7 @@ import (
 var paasBackendVersionSQL = `SELECT code,name,version FROM bksuite_common.production_info`
 var saasVersibSQL = `select code,name,version from open_paas.paas_saas_app join open_paas.paas_saas_app_version psav on paas_saas_app.current_version_id=psav.id`
 
-//go:embed asserts/version_images.py
+//go:embed assets/version_images.py
 var imageScript string
 
 type VersionRow struct {

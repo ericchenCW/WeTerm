@@ -4,11 +4,11 @@ import (
 	_ "embed"
 )
 
-//go:embed asserts/init_ip.sh
+//go:embed assets/init_ip.sh
 var InitIPScript string
 
-//go:embed asserts/stop.sh
+//go:embed assets/stop.sh
 var StopScript string
 
-//go:embed asserts/init_topo.sh
+//go:embed assets/init_topo.sh
 var InitTopoScript string
